@@ -20,10 +20,10 @@ export default function SearchScreen({ onSearch }) {
   const { issues, loading: issuesLoading } = useIssueFeed()
   const [bannerIdx, setBannerIdx] = useState(0)
 
-  // 3초마다 다음 이슈로 순환
+  // 6초마다 다음 이슈로 순환
   useEffect(() => {
     if (issues.length <= 1) return
-    const id = setInterval(() => setBannerIdx(i => (i + 1) % issues.length), 3000)
+    const id = setInterval(() => setBannerIdx(i => (i + 1) % issues.length), 6000)
     return () => clearInterval(id)
   }, [issues.length])
 
@@ -135,71 +135,70 @@ export default function SearchScreen({ onSearch }) {
         </p>
       </div>
 
-      {/* ══ 실시간 이슈 배너 — 검색창 위, 토스증권 AI 스타일 ══ */}
+      {/* ══ 실시간 이슈 배너 — 토스증권 AI 스타일, 배경 없음 ══ */}
       {issuesLoading ? (
-        <div
-          style={{
-            height: '44px',
-            backgroundColor: 'var(--color-bg-input)',
-            borderRadius: '12px',
-            marginBottom: '12px',
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{
+            height: '14px', width: '90px',
+            backgroundColor: 'var(--color-border)',
+            borderRadius: '4px',
+            marginBottom: '8px',
             animation: 'skeletonPulse 1.5s ease-in-out infinite',
-          }}
-        />
+          }} />
+          <div style={{
+            height: '18px', width: '70%',
+            backgroundColor: 'var(--color-border)',
+            borderRadius: '4px',
+            animation: 'skeletonPulse 1.5s ease-in-out infinite',
+          }} />
+        </div>
       ) : issues.length > 0 ? (
         <button
           onClick={() => onSearch(issues[bannerIdx]?.stock_code)}
           style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: '5px',
             width: '100%',
-            height: '44px',
-            backgroundColor: 'var(--color-accent-light)',
-            borderRadius: '12px',
+            backgroundColor: 'transparent',
             border: 'none',
-            padding: '0 14px',
+            padding: '0',
             cursor: 'pointer',
-            marginBottom: '12px',
-            overflow: 'hidden',
+            marginBottom: '20px',
             textAlign: 'left',
             fontFamily: 'inherit',
-            transition: 'opacity 0.12s',
           }}
-          onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
         >
+          {/* 라벨 행 — ✦ 실시간 이슈 › */}
           <span style={{
             display: 'flex',
             alignItems: 'center',
             gap: '4px',
-            backgroundColor: 'var(--color-accent)',
-            color: '#fff',
-            fontSize: '11px',
-            fontWeight: 700,
-            padding: '3px 8px',
-            borderRadius: '999px',
-            flexShrink: 0,
+            fontSize: '13px',
+            fontWeight: 600,
+            color: 'var(--color-accent)',
             letterSpacing: '-0.2px',
           }}>
-            ⚡ 실시간 이슈
+            ✦ 실시간 이슈
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.8 }}>
+              <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </span>
+          {/* 이슈 텍스트 행 — fade 전환 */}
           <span
             key={bannerIdx}
             style={{
-              fontSize: '13px',
+              fontSize: '15px',
+              fontWeight: 700,
               color: 'var(--color-text-primary)',
-              fontWeight: 500,
-              flex: 1,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              animation: 'bannerFadeIn 0.3s ease',
+              letterSpacing: '-0.3px',
+              lineHeight: 1.4,
+              animation: 'bannerFadeIn 0.4s ease',
             }}
           >
-            {issues[bannerIdx]?.one_line}
+            {issues[bannerIdx]?.stock_name} {issues[bannerIdx]?.one_line}
           </span>
-          <span style={{ fontSize: '14px', color: 'var(--color-accent)', flexShrink: 0 }}>›</span>
         </button>
       ) : null}
 
@@ -392,7 +391,7 @@ export default function SearchScreen({ onSearch }) {
           to   { transform: translateX(-50%); }
         }
         .marquee-track {
-          animation: marquee 18s linear infinite;
+          animation: marquee 30s linear infinite;
         }
         .marquee-track:hover {
           animation-play-state: paused;
