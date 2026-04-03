@@ -69,14 +69,34 @@
 - [x] `App.jsx` 반응형 레이아웃 — 640px 중앙 정렬 wrapper
 - [x] `src/index.css` `#root`에 `align-items: center` 추가 — mx-auto 정상 동작
 
-## Phase 4: 통합 테스트 & 튜닝 🔄 진행 중
+## Phase 4: UX 전면 리디자인 ✅ 완료 (2026-04-03)
 
-- [x] 실제 API 키 연동 테스트
-- [x] 판결 밸런스 1차 검증 — 삼성전자(21/ok), 에코프로비엠(27/wait), HLB(22/ok), 카카오(21/ok)
-- [ ] VerdictScreen UI 개선 — headlineMent 크기 확대(32px+), 근거 카드 아이콘 추가
-- [ ] HLB 등 바이오/고변동 종목 판정 보정 (현재 ok → 보다 주의 필요)
-- [ ] 디스클레이머 문구 확정
-- [ ] `npm run build` 에러 없음 확인
+스펙: `docs/superpowers/specs/2026-04-03-verdict-ux-redesign.md`
+
+- [x] SearchScreen 타이틀 개편 — "오늘은 어떤 종목에 물리고 싶어?"
+- [x] VerdictScreen 히어로 개편 — GRADE_STYLES 이모지/타이틀 전면 교체 (🤬😤😎🫠)
+- [x] VerdictScreen 이유 카드 재설계 — 룩업 테이블 기반 (건물층/기업가치/거래분위기/시장기분)
+- [x] 이슈 태그 바 추가 — issueType / impactTag / priceSignalTag
+- [x] SimulationScreen 3개월/6개월/1년 + best/worst 범위 밴드
+- [x] LLM 페르소나 개편 — 30대 MZ 직장인 고인물, headlineMent 10~20자 반말
+- [x] Edge Function rawData 추가 (highRatio, per, isDeficit, volMultiple, fearGreed)
+- [x] Edge Function 신규 필드 (issueType, sectorImpact, impactTag, priceSignalTag)
+- [x] Edge Function 배포 완료
+
+## Phase 5: 실시간 이슈 피드 + UX 개선 ✅ 완료 (2026-04-03)
+
+스펙: `docs/superpowers/specs/2026-04-03-phase5-issue-feed.md`
+플랜: `docs/superpowers/plans/2026-04-03-phase5-issue-feed.md`
+
+- [x] `issue_feed` 테이블 생성 (DB 마이그레이션 006)
+- [x] `issue-feed` Edge Function 신규 생성 — KIS 거래량 상위 + 네이버 뉴스 + Claude Haiku, 2시간 캐시
+- [x] `useIssueFeed` 훅 — DB 캐시 우선, Edge Function 폴백
+- [x] SearchScreen 실시간 이슈 배너 추가 — 토스증권 AI 스타일, 한 줄 인라인, 6초 순환
+- [x] LoadingScreen 텍스트 2.5초 순환 개선 — FOMO 표현 제거, 8개 문구
+- [x] 손실/수익 표현 개편 — LOSS_LABELS/GAIN_LABELS 룩업 테이블, "날린다" 제거
+- [x] 마퀴 속도 조정 — 18초 → 30초
+- [x] git 초기화 + 전체 커밋
+- [x] Vercel 배포 — https://stockcheck-pi.vercel.app
 
 ---
 

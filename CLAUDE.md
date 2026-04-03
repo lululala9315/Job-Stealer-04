@@ -283,39 +283,21 @@ RLS 활성화. 본인 데이터만 접근 가능.
 
 ---
 
-### Phase 5 — 메인 이슈 피드 (다음 작업)
+### Phase 5 — 실시간 이슈 피드 ✅ 완료 (2026-04-03)
 
-스펙: `docs/superpowers/specs/2026-04-03-verdict-ux-redesign.md` 섹션 8
+스펙: `docs/superpowers/specs/2026-04-03-phase5-issue-feed.md`
+플랜: `docs/superpowers/plans/2026-04-03-phase5-issue-feed.md`
 
-**컨셉:** 마퀴(가로 스크롤 종목 나열) 제거 → 실시간 이슈 카드로 교체
-토스증권 AI 분석과 차별화 — "투자 기회"가 아닌 **"FOMO 차단 훅"**
+**구현 완료:**
 
-**구현 내용:**
+- `supabase/migrations/006_issue_feed.sql` — issue_feed 테이블 (2시간 캐시)
+- `supabase/functions/issue-feed/index.ts` — KIS 거래량 상위 + 네이버 뉴스 + Claude Haiku, on-demand + DB 캐시
+- `src/hooks/useIssueFeed.js` — DB 캐시 우선 조회, 없으면 Edge Function 호출
+- `src/components/SearchScreen.jsx` — 토스증권 AI 스타일 한 줄 배너 (검색창 위, 6초 순환), 마퀴 유지(30초)
+- `src/components/LoadingScreen.jsx` — 8개 문구 2.5초 순환, FOMO 표현 제거
+- `supabase/functions/check-stock/index.ts` — LOSS_LABELS/GAIN_LABELS 룩업 테이블, "날린다" 제거
 
-1. **Supabase Cron (30분마다)**
-   - KIS API: 거래량 상위 20종목 중 거래량 2배+ or 가격 ±3%+ 필터 → 5~8개
-   - 네이버 뉴스 API: 각 종목 헤드라인 3개 수집
-   - Claude Haiku: issueType / sectorImpact / oneLineSummary / plainExplain 생성
-   - `issue_feed` 테이블 저장 (2시간 유효)
-
-2. **SearchScreen 메인 화면**
-   - 검색창 아래에 이슈 카드 3~5개 표시
-   - 카드 탭 → 해당 종목 판결 시작 (별도 버튼 없음)
-   - 감성별 구역: 💣 조심할 종목 / ⚡ 지금 뜨는 이슈
-
-3. **DB 스키마 (`issue_feed` 테이블)**
-   ```sql
-   id uuid PK, stock_code text, stock_name text,
-   price_change numeric, issue_type text,
-   sentiment text,  -- 위험/주의/긍정
-   emoji text, one_line text, plain_explain text,
-   created_at timestamptz, expires_at timestamptz  -- 2시간 유효
-   ```
-
-4. **변경 파일**
-   - `supabase/functions/issue-feed/index.ts` — 새 Edge Function (Cron 트리거)
-   - `src/components/SearchScreen.jsx` — 이슈 카드 섹션 추가
-   - `supabase/migrations/006_issue_feed.sql` — 테이블 생성
+**배너 구조:** `✦ 실시간 이슈  [종목명 이슈텍스트]  ›` — 한 줄, 배경 없음, 박스 없음
 
 ### 반응형 레이아웃
 - `App.jsx`: 640px wrapper (`max-w-[640px] mx-auto w-full min-h-dvh`)

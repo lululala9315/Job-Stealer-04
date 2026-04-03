@@ -1,8 +1,8 @@
 # stockcheck 리빌드 체크리스트
 
-> 기획 완료일: 2026-04-01 | 상태: 구현 대기
-> 플랜 파일: `.claude/plans/eager-growing-fairy.md`
-> 설계 스펙: `docs/superpowers/specs/2026-04-01-verdict-service-redesign.md`
+> 최종 업데이트: 2026-04-03 | 상태: Phase 5 완료, 배포 완료
+> 설계 스펙: `docs/superpowers/specs/2026-04-03-phase5-issue-feed.md`
+> 배포 URL: https://stockcheck-pi.vercel.app
 
 ---
 
@@ -143,6 +143,27 @@
 **새 응답 스키마로 DB 저장**
 - [ ] `check_history` 저장 시 `invest_amount`, `verdict_grade`, `verdict_score` 추가
 - [ ] Mock 모드 새 스키마로 업데이트 (API 키 없이 개발 테스트용)
+
+### Phase 4 — UX 전면 리디자인 ✅ 완료 (2026-04-03)
+
+- [x] SearchScreen 타이틀 → "오늘은 어떤 종목에 물리고 싶어?"
+- [x] VerdictScreen 히어로 — 🤬호구 입장 1초 전 / 😤호구 대기표 / 😎인정 가즈아 / 🫠이건 어렵군
+- [x] 이유 카드 룩업 테이블 기반 재설계 (price/value/volume/market/news)
+- [x] 이슈 태그 바 (impactTag / priceSignalTag)
+- [x] 시뮬레이션 3개월/6개월/1년 + best/worst 범위 밴드
+- [x] LLM 페르소나 — 30대 MZ 직장인 고인물, 반말
+- [x] Edge Function rawData + 이슈 필드 추가, 배포 완료
+
+### Phase 5 — 실시간 이슈 피드 + UX 개선 ✅ 완료 (2026-04-03)
+
+- [x] `issue_feed` 테이블 생성 (마이그레이션 006)
+- [x] `issue-feed` Edge Function — KIS 거래량 상위 + 네이버 뉴스 + Claude Haiku, 2시간 캐시
+- [x] `useIssueFeed` 훅 — DB 캐시 우선, Edge Function 폴백
+- [x] SearchScreen 실시간 이슈 배너 — 토스증권 AI 스타일, 한 줄, 6초 순환
+- [x] LoadingScreen 텍스트 2.5초 순환, FOMO 표현 제거
+- [x] 손실/수익 표현 — LOSS_LABELS/GAIN_LABELS 룩업 ("날린다" → "제주도 왕복 두 번이야")
+- [x] 마퀴 속도 30초로 조정
+- [x] git 초기화 + Vercel 배포
 
 ### Phase 3 — 프론트엔드 ✅ 완료
 
