@@ -6,6 +6,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import StockLogo from './StockLogo'
+import { useIssueFeed } from '../hooks/useIssueFeed'
 
 const POPULAR_STOCKS = [
   { name: '삼성전자', code: '005930' },
@@ -16,6 +17,16 @@ const POPULAR_STOCKS = [
 ]
 
 export default function SearchScreen({ onSearch }) {
+  const { issues, loading: issuesLoading } = useIssueFeed()
+  const [bannerIdx, setBannerIdx] = useState(0)
+
+  // 3초마다 다음 이슈로 순환
+  useEffect(() => {
+    if (issues.length <= 1) return
+    const id = setInterval(() => setBannerIdx(i => (i + 1) % issues.length), 3000)
+    return () => clearInterval(id)
+  }, [issues.length])
+
   const [value, setValue] = useState('')
   const [focused, setFocused] = useState(false)
   const inputRef = useRef(null)
@@ -123,6 +134,74 @@ export default function SearchScreen({ onSearch }) {
           물리기 전에 나한테 먼저 물어봐
         </p>
       </div>
+
+      {/* ══ 실시간 이슈 배너 — 검색창 위, 토스증권 AI 스타일 ══ */}
+      {issuesLoading ? (
+        <div
+          style={{
+            height: '44px',
+            backgroundColor: 'var(--color-bg-input)',
+            borderRadius: '12px',
+            marginBottom: '12px',
+            animation: 'skeletonPulse 1.5s ease-in-out infinite',
+          }}
+        />
+      ) : issues.length > 0 ? (
+        <button
+          onClick={() => onSearch(issues[bannerIdx]?.stock_code)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            width: '100%',
+            height: '44px',
+            backgroundColor: 'var(--color-accent-light)',
+            borderRadius: '12px',
+            border: 'none',
+            padding: '0 14px',
+            cursor: 'pointer',
+            marginBottom: '12px',
+            overflow: 'hidden',
+            textAlign: 'left',
+            fontFamily: 'inherit',
+            transition: 'opacity 0.12s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+        >
+          <span style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            backgroundColor: 'var(--color-accent)',
+            color: '#fff',
+            fontSize: '11px',
+            fontWeight: 700,
+            padding: '3px 8px',
+            borderRadius: '999px',
+            flexShrink: 0,
+            letterSpacing: '-0.2px',
+          }}>
+            ⚡ 실시간 이슈
+          </span>
+          <span
+            key={bannerIdx}
+            style={{
+              fontSize: '13px',
+              color: 'var(--color-text-primary)',
+              fontWeight: 500,
+              flex: 1,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              animation: 'bannerFadeIn 0.3s ease',
+            }}
+          >
+            {issues[bannerIdx]?.one_line}
+          </span>
+          <span style={{ fontSize: '14px', color: 'var(--color-accent)', flexShrink: 0 }}>›</span>
+        </button>
+      ) : null}
 
       {/* ══ 검색창 — 토스 스타일 ══ */}
       <div style={{ paddingBottom: '24px' }}>
@@ -296,6 +375,14 @@ export default function SearchScreen({ onSearch }) {
       </div>
 
       <style>{`
+        @keyframes bannerFadeIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes skeletonPulse {
+          0%, 100% { opacity: 0.5; }
+          50%       { opacity: 1; }
+        }
         @keyframes heroIn {
           from { opacity: 0; transform: translateY(12px); }
           to   { opacity: 1; transform: translateY(0); }
