@@ -1075,7 +1075,6 @@ async function generateVerdictWithLLM(ctx: {
   const recent5Return = dailyData.slice(0, 5).reduce((s, d) => s + d.changeRate, 0)
 
   const worstLoss3d = Math.round(investAmount * (simulation.shortTerm.threeDayRange.bestCase / 100))
-  const lossUnit = getRelatableUnit(worstLoss3d)
 
   const newsHeadlines = ctx.newsSignals?.dataAvailable
     ? '뉴스 데이터 있음'
@@ -1183,7 +1182,6 @@ function buildMockResult(query: string, investAmount: number): VerdictResult {
   const stockCode = query.length === 6 && /^\d+$/.test(query) ? query : '005930'
 
   const lossAmount = Math.round(investAmount * 0.04)
-  const lossUnit = getRelatableUnit(lossAmount)
 
   // 목업 시뮬레이션 — 단일 기댓값 + 범위 밴드
   function mockScenario(months: number) {
