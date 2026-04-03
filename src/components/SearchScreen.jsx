@@ -135,70 +135,63 @@ export default function SearchScreen({ onSearch }) {
         </p>
       </div>
 
-      {/* ══ 실시간 이슈 배너 — 토스증권 AI 스타일, 배경 없음 ══ */}
+      {/* ══ 실시간 이슈 배너 — 한 줄, 박스 없음 ══ */}
       {issuesLoading ? (
-        <div style={{ marginBottom: '20px' }}>
-          <div style={{
-            height: '14px', width: '90px',
-            backgroundColor: 'var(--color-border)',
-            borderRadius: '4px',
-            marginBottom: '8px',
-            animation: 'skeletonPulse 1.5s ease-in-out infinite',
-          }} />
-          <div style={{
-            height: '18px', width: '70%',
-            backgroundColor: 'var(--color-border)',
-            borderRadius: '4px',
-            animation: 'skeletonPulse 1.5s ease-in-out infinite',
-          }} />
-        </div>
+        <div style={{
+          height: '18px', width: '60%',
+          backgroundColor: 'var(--color-border)',
+          borderRadius: '4px',
+          marginBottom: '16px',
+          animation: 'skeletonPulse 1.5s ease-in-out infinite',
+        }} />
       ) : issues.length > 0 ? (
         <button
           onClick={() => onSearch(issues[bannerIdx]?.stock_code)}
           style={{
             display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            gap: '5px',
+            alignItems: 'center',
+            gap: '8px',
             width: '100%',
             backgroundColor: 'transparent',
             border: 'none',
             padding: '0',
             cursor: 'pointer',
-            marginBottom: '20px',
+            marginBottom: '16px',
             textAlign: 'left',
             fontFamily: 'inherit',
+            overflow: 'hidden',
           }}
         >
-          {/* 라벨 행 — ✦ 실시간 이슈 › */}
+          {/* ✦ 실시간 이슈 — 고정 라벨 */}
           <span style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
             fontSize: '13px',
-            fontWeight: 600,
+            fontWeight: 700,
             color: 'var(--color-accent)',
             letterSpacing: '-0.2px',
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
           }}>
             ✦ 실시간 이슈
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.8 }}>
-              <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
           </span>
-          {/* 이슈 텍스트 행 — fade 전환 */}
+          {/* 이슈 텍스트 — fade 전환 */}
           <span
             key={bannerIdx}
             style={{
-              fontSize: '15px',
-              fontWeight: 700,
+              fontSize: '13px',
+              fontWeight: 500,
               color: 'var(--color-text-primary)',
-              letterSpacing: '-0.3px',
-              lineHeight: 1.4,
+              letterSpacing: '-0.2px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flex: 1,
               animation: 'bannerFadeIn 0.4s ease',
             }}
           >
             {issues[bannerIdx]?.stock_name} {issues[bannerIdx]?.one_line}
           </span>
+          {/* › 화살표 */}
+          <span style={{ fontSize: '13px', color: 'var(--color-text-tertiary)', flexShrink: 0 }}>›</span>
         </button>
       ) : null}
 
