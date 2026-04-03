@@ -1,0 +1,236 @@
+/**
+ * 역할: 글로벌 스타일 + Tailwind 테마 설정
+ * 주요 기능: TDS(Toss Design System) 기반 CSS 변수, 폰트, 색상 정의
+ * 의존성: Tailwind CSS v4
+ * 참고: tossmini-docs.toss.im/tds-mobile 기반
+ */
+
+@import "tailwindcss";
+
+@theme {
+  /* ── 배경 ── */
+  --color-bg: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-elevated: #ffffff;
+  --color-bg-input: #f2f4f6;    /* grey100 — TDS adaptiveGreyOpacity50 */
+
+  /* ── 텍스트 ── */
+  --color-text-primary: #191f28;   /* grey900 */
+  --color-text-secondary: #6b7684; /* grey600 */
+  --color-text-tertiary: #b0b8c1;  /* grey400 */
+  --color-text-inverse: #ffffff;
+  --color-text-disabled: #d1d6db;  /* grey300 */
+
+  /* ── 포인트 (토스 블루) ── */
+  --color-accent: #3182f6;         /* blue500 */
+  --color-accent-hover: #2272eb;   /* blue600 */
+  --color-accent-light: #e8f3ff;   /* blue50 */
+
+  /* ── 시그널 ── */
+  --color-positive: #3182f6;       /* 매수/상승 — 토스증권은 블루 */
+  --color-positive-light: #e8f3ff;
+  --color-negative: #f04452;       /* red500 — 매도/하락 */
+  --color-negative-light: #ffeeee; /* red50 */
+  --color-warning: #f59e0b;
+  --color-warning-light: #fffbeb;
+
+  /* ── 보더 ── */
+  --color-border: #e5e8eb;         /* grey200 */
+  --color-border-light: #f2f4f6;   /* grey100 */
+
+  /* ── 프리미티브 팔레트 (직접 사용 최소화) ── */
+  --color-grey-50: #f9fafb;
+  --color-grey-100: #f2f4f6;
+  --color-grey-200: #e5e8eb;
+  --color-grey-300: #d1d6db;
+  --color-grey-400: #b0b8c1;
+  --color-grey-500: #8b95a1;
+  --color-grey-600: #6b7684;
+  --color-grey-700: #4e5968;
+  --color-grey-800: #333d4b;
+  --color-grey-900: #191f28;
+  --color-blue-500: #3182f6;
+  --color-red-500: #f04452;
+
+  /* ── 폰트 ── */
+  --font-sans: 'Pretendard', 'Toss Product Sans', 'Apple SD Gothic Neo', -apple-system,
+    BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
+
+  /* ── 타이포그래피 스케일 (TDS T1-T7) ── */
+  --text-t1: 30px;   --leading-t1: 40px;   /* 대형 타이틀 */
+  --text-t2: 26px;   --leading-t2: 35px;
+  --text-t3: 22px;   --leading-t3: 31px;
+  --text-t4: 20px;   --leading-t4: 29px;
+  --text-t5: 17px;   --leading-t5: 25.5px; /* 본문 기본 */
+  --text-t6: 15px;   --leading-t6: 22.5px;
+  --text-t7: 13px;   --leading-t7: 19.5px; /* 캡션 */
+
+  /* ── 간격 시스템 (4px 베이스) ── */
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+
+  /* ── Border Radius ── */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;   /* TDS TextField */
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-full: 9999px;
+
+  /* ── 그림자 (Toss Invest 정확한 값) ── */
+  --shadow-card: 0px 1px 3px 0px rgba(0, 27, 55, 0.10);
+  --shadow-card-hover: 0px 4px 12px 0px rgba(0, 27, 55, 0.14);
+  --shadow-float: 0px 8px 24px 0px rgba(0, 27, 55, 0.16);
+
+  /* ── 버튼 ── */
+  --button-height-lg: 52px;
+  --button-height-md: 44px;
+  --button-height-sm: 36px;
+  --button-font-weight: 600;
+  --button-line-height: 1.252;
+  --button-radius: var(--radius-lg);
+
+  /* ── 인풋 ── */
+  --input-height: 52px;
+  --input-radius: var(--radius-lg);
+  --input-padding: 14px 16px;
+  --input-border: inset 0 0 0 1px rgba(2, 32, 71, 0.05);
+
+  /* ── 판결 등급 색상 (VerdictScreen 전용) ── */
+  --color-verdict-ban: #f04452;
+  --color-verdict-ban-glow: rgba(240, 68, 82, 0.15);
+  --color-verdict-ban-glass: rgba(240, 68, 82, 0.08);
+  --color-verdict-wait: #f59e0b;
+  --color-verdict-wait-glow: rgba(245, 158, 11, 0.15);
+  --color-verdict-wait-glass: rgba(245, 158, 11, 0.08);
+  --color-verdict-ok: #3182f6;
+  --color-verdict-ok-glow: rgba(49, 130, 246, 0.15);
+  --color-verdict-ok-glass: rgba(49, 130, 246, 0.08);
+  --color-verdict-hold: #8b95a1;
+  --color-verdict-hold-glow: rgba(139, 149, 161, 0.12);
+  --color-verdict-hold-glass: rgba(139, 149, 161, 0.06);
+
+  /* ── 글래스모피즘 (판결 히어로 섹션 전용) ── */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-blur: 20px;
+  --glass-shadow: 0 8px 32px rgba(0, 27, 55, 0.08);
+
+  /* ── 스티커 이모지 ── */
+  --sticker-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+  /* ── 치환 이모지 블리딩 색상 ── */
+  --emoji-chicken: rgba(255, 165, 0, 0.12);    /* 🍗 */
+  --emoji-coffee: rgba(139, 90, 43, 0.12);     /* ☕ */
+  --emoji-car: rgba(220, 50, 50, 0.12);        /* 🚗 */
+  --emoji-laptop: rgba(150, 150, 170, 0.12);   /* 💻 */
+  --emoji-airpods: rgba(200, 200, 220, 0.12);  /* 🎧 */
+  --emoji-travel: rgba(50, 130, 246, 0.12);    /* ✈️ */
+  --emoji-pizza: rgba(210, 100, 30, 0.12);     /* 🍕 */
+  --emoji-ipad: rgba(100, 130, 180, 0.12);     /* 📱 */
+}
+
+/* Pretendard CDN — Toss Product Sans CDN 미지원으로 가장 유사한 Pretendard 사용 (index.html에 link 태그) */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  min-height: 100dvh;
+}
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 태블릿/데스크탑: 콘텐츠 중앙 정렬 */
+@media (min-width: 640px) {
+  body {
+    background-color: #ffffff;
+  }
+  /* 데스크탑에서 돌아가기 버튼 숨김 */
+  .mobile-back-btn {
+    display: none !important;
+  }
+}
+
+/* 질문 전환 애니메이션 */
+@keyframes questionIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 스티커 이모지 float 애니메이션 */
+@keyframes emojiFloat {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+
+/* 글래스모피즘 유틸 클래스 — 판결 히어로 섹션 전용 */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* 스티커 이모지 — CSS only, 이미지 불필요 */
+.sticker-emoji {
+  font-size: 64px;
+  /* 흰 테두리 + 그림자 — 스티커 느낌 */
+  text-shadow:
+    0 0 4px rgba(255, 255, 255, 0.9),
+    0 0 8px rgba(255, 255, 255, 0.7);
+  filter: drop-shadow(var(--sticker-shadow));
+  animation: emojiFloat 3s ease-in-out infinite;
+  display: inline-block;
+}
+
+/* 이모지 색 블리딩 컨테이너 */
+.emoji-glow {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.emoji-glow::before {
+  content: '';
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, var(--current-emoji-color, rgba(255,255,255,0)) 0%, transparent 70%);
+  filter: blur(40px);
+  opacity: 0.6;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* 모션 감소 설정 시 애니메이션 비활성화 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
