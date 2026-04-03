@@ -1,24 +1,30 @@
 /**
  * 역할: Edge Function 호출 중 로딩 화면
- * 주요 기능: 랜덤 재미 문구 + 스피너
+ * 주요 기능: 2.5초마다 재밌는 텍스트 순환 + 스피너
  * 의존성: 없음
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const LOADING_MESSAGES = [
-  '충동 억제 AI 가동 중...',
-  'FOMO 방지벽 세우는 중...',
-  '팩트로 찬물 끼얹는 중...',
-  '잘못 탄 건 아닌지 확인 중...',
+  '충동이 올라오고 있어...',
+  '지금 이 종목 진짜 괜찮은지 보는 중...',
+  '팩트 몇 개 긁어오는 중...',
+  '뇌동매매 감지 레이더 켜는 중...',
   '무릎인지 어깨인지 파악 중...',
+  '지금 사면 어떻게 될지 시뮬 중...',
+  '남들도 다 사는지 확인 중...',
+  '이미 늦은 건지 확인 중...',
 ]
 
 export default function LoadingScreen() {
-  // 렌더링 시 한 번만 선택 — 리렌더링마다 바뀌지 않도록 useState 초기화
-  const [msg] = useState(
-    () => LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]
-  )
+  const [idx, setIdx] = useState(0)
+
+  // 2.5초마다 다음 메시지로 순환
+  useEffect(() => {
+    const id = setInterval(() => setIdx(i => (i + 1) % LOADING_MESSAGES.length), 2500)
+    return () => clearInterval(id)
+  }, [])
 
   return (
     <div
@@ -36,7 +42,7 @@ export default function LoadingScreen() {
         paddingTop: '32px',
       }}
     >
-      {/* 스피너 — className으로 직접 타겟팅 */}
+      {/* 스피너 */}
       <div
         className="loading-spinner"
         style={{
@@ -48,9 +54,10 @@ export default function LoadingScreen() {
         }}
       />
 
-      {/* 로딩 메시지 */}
+      {/* 순환 메시지 — key={idx}로 fade 재생 */}
       <div style={{ textAlign: 'center' }}>
         <p
+          key={idx}
           style={{
             fontSize: '22px',
             lineHeight: '31px',
@@ -58,9 +65,10 @@ export default function LoadingScreen() {
             color: 'var(--color-text-primary)',
             letterSpacing: '-0.5px',
             textWrap: 'balance',
+            animation: 'loadingFadeIn 0.3s cubic-bezier(0.2, 0, 0, 1)',
           }}
         >
-          {msg}
+          {LOADING_MESSAGES[idx]}
         </p>
         <p
           className="loading-pulse"
