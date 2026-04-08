@@ -22,7 +22,7 @@ export default function LoginBottomSheet({ onClose }) {
     <BottomSheet onClose={onClose} zIndex={60}>
       {/* 카피 */}
       <p style={{
-        fontSize: '22px', fontWeight: 800,
+        fontSize: '22px', fontWeight: 600,
         color: 'var(--color-text-primary)',
         letterSpacing: '-0.4px', lineHeight: '31px',
         marginBottom: '6px',
