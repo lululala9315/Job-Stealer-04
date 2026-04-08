@@ -7,11 +7,8 @@
 import { useState, useMemo, useEffect } from 'react'
 // 스티커 스트로크 + 그림자 (로딩/메인과 동일)
 // 스티커 스트로크 + 딱 붙은 그림자
+// 스티커 필터 — drop-shadow 최소화 (성능 최적화)
 const STICKER_FILTER = `
-  drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff)
-  drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff)
-  drop-shadow(2px 2px 0 #fff) drop-shadow(-2px -2px 0 #fff)
-  drop-shadow(2px -2px 0 #fff) drop-shadow(-2px 2px 0 #fff)
   drop-shadow(0 2px 1px rgba(0,0,0,0.10))
 `
 
@@ -95,24 +92,6 @@ function GradeEmoji({ grade, size = 72, once = false }) {
   )
 }
 
-/** SVG 스티커 아웃라인 필터 — feMorphology로 흰 테두리 생성 */
-function StickerFilter() {
-  return (
-    <svg width="0" height="0" style={{ position: 'absolute' }}>
-      <defs>
-        <filter id="sticker-outline">
-          <feMorphology in="SourceAlpha" result="Dilated" operator="dilate" radius="2" />
-          <feFlood floodColor="#ffffff" result="OutlineColor" />
-          <feComposite in="OutlineColor" in2="Dilated" operator="in" result="Outline" />
-          <feMerge>
-            <feMergeNode in="Outline" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-    </svg>
-  )
-}
 
 /** 금액 포맷 — ±N만원 / ±N,000원 */
 function formatGain(amount) {
@@ -339,7 +318,6 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
       paddingBottom: 'calc(54px + 28px + 12px + env(safe-area-inset-bottom, 0px))',
       background: '#F3F4F6',
     }}>
-      <StickerFilter />
 
       {/* ── 전체를 하나의 흐름으로 ── */}
       <div style={{
@@ -404,11 +382,9 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
       {grade === 'hold' && (
         <div style={{
           margin: '24px 16px 0',
-          background: 'rgba(255,255,255,0.45)',
-          backdropFilter: 'blur(25px) saturate(200%)',
-          WebkitBackdropFilter: 'blur(25px) saturate(200%)',
-          border: '1.5px solid rgba(255,255,255,0.6)',
-          boxShadow: 'inset 0 1.5px 0 rgba(255,255,255,0.6), 0 2px 8px 0 rgba(31,38,135,0.04)',
+          background: 'rgba(255,255,255,0.82)',
+          border: '1px solid rgba(255,255,255,0.9)',
+          boxShadow: '0 2px 8px 0 rgba(0,0,0,0.04)',
           borderRadius: '24px',
           padding: '20px',
           textAlign: 'center',
@@ -438,11 +414,9 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
       {grade !== 'hold' && Object.keys(projections).length > 0 && (
         <div style={{
           margin: '24px 16px 0',
-          background: 'rgba(255,255,255,0.45)',
-          backdropFilter: 'blur(25px) saturate(200%)',
-          WebkitBackdropFilter: 'blur(25px) saturate(200%)',
-          border: '1.5px solid rgba(255,255,255,0.6)',
-          boxShadow: 'inset 0 1.5px 0 rgba(255,255,255,0.6), 0 2px 8px 0 rgba(31,38,135,0.04)',
+          background: 'rgba(255,255,255,0.82)',
+          border: '1px solid rgba(255,255,255,0.9)',
+          boxShadow: '0 2px 8px 0 rgba(0,0,0,0.04)',
           borderRadius: '24px',
           padding: '20px',
           animation: 'verdictIn 0.35s cubic-bezier(0.2, 0, 0, 1) 0.10s both',
@@ -531,7 +505,6 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
                     fontSize: '34px',
                     lineHeight: 1,
                     display: 'inline-block',
-                    filter: 'url(#sticker-outline) drop-shadow(0 2px 0.5px rgba(0,0,0,0.18))',
                   }}>
                     {displayEmoji}
                   </span>
@@ -574,11 +547,9 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
               width: '100%', display: 'flex', alignItems: 'center',
               justifyContent: 'center', gap: '4px',
               padding: '14px 0',
-              background: 'rgba(255,255,255,0.35)',
-              backdropFilter: 'blur(20px) saturate(200%)',
-              WebkitBackdropFilter: 'blur(20px) saturate(200%)',
-              border: '1.5px solid rgba(255,255,255,0.5)',
-              boxShadow: 'inset 0 1.5px 0 rgba(255,255,255,0.5), 0 1px 4px rgba(31,38,135,0.03)',
+              background: 'rgba(255,255,255,0.72)',
+              border: '1px solid rgba(255,255,255,0.85)',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
               borderRadius: '16px',
               cursor: 'pointer', fontFamily: 'inherit',
             }}
