@@ -7,8 +7,12 @@
 import { useState, useMemo, useEffect } from 'react'
 // 스티커 스트로크 + 그림자 (로딩/메인과 동일)
 // 스티커 스트로크 + 딱 붙은 그림자
-// 스티커 필터 — drop-shadow 최소화 (성능 최적화)
+// 스티커 스트로크 + 딱 붙은 그림자
 const STICKER_FILTER = `
+  drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff)
+  drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff)
+  drop-shadow(2px 2px 0 #fff) drop-shadow(-2px -2px 0 #fff)
+  drop-shadow(2px -2px 0 #fff) drop-shadow(-2px 2px 0 #fff)
   drop-shadow(0 2px 1px rgba(0,0,0,0.10))
 `
 
@@ -92,6 +96,25 @@ function GradeEmoji({ grade, size = 72, once = false }) {
   )
 }
 
+
+/** SVG 스티커 아웃라인 필터 — feMorphology로 흰 테두리 생성 */
+function StickerFilter() {
+  return (
+    <svg width="0" height="0" style={{ position: 'absolute' }}>
+      <defs>
+        <filter id="sticker-outline">
+          <feMorphology in="SourceAlpha" result="Dilated" operator="dilate" radius="2" />
+          <feFlood floodColor="#ffffff" result="OutlineColor" />
+          <feComposite in="OutlineColor" in2="Dilated" operator="in" result="Outline" />
+          <feMerge>
+            <feMergeNode in="Outline" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+    </svg>
+  )
+}
 
 /** 금액 포맷 — ±N만원 / ±N,000원 */
 function formatGain(amount) {
@@ -319,6 +342,8 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
       background: '#F3F4F6',
     }}>
 
+      <StickerFilter />
+
       {/* ── 전체를 하나의 흐름으로 ── */}
       <div style={{
         padding: '0 24px',
@@ -382,9 +407,11 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
       {grade === 'hold' && (
         <div style={{
           margin: '24px 16px 0',
-          background: 'rgba(255,255,255,0.82)',
-          border: '1px solid rgba(255,255,255,0.9)',
-          boxShadow: '0 2px 8px 0 rgba(0,0,0,0.04)',
+          background: 'rgba(255,255,255,0.45)',
+          backdropFilter: 'blur(16px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+          border: '1.5px solid rgba(255,255,255,0.6)',
+          boxShadow: 'inset 0 1.5px 0 rgba(255,255,255,0.6), 0 2px 8px 0 rgba(31,38,135,0.04)',
           borderRadius: '24px',
           padding: '20px',
           textAlign: 'center',
@@ -414,9 +441,11 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
       {grade !== 'hold' && Object.keys(projections).length > 0 && (
         <div style={{
           margin: '24px 16px 0',
-          background: 'rgba(255,255,255,0.82)',
-          border: '1px solid rgba(255,255,255,0.9)',
-          boxShadow: '0 2px 8px 0 rgba(0,0,0,0.04)',
+          background: 'rgba(255,255,255,0.45)',
+          backdropFilter: 'blur(16px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+          border: '1.5px solid rgba(255,255,255,0.6)',
+          boxShadow: 'inset 0 1.5px 0 rgba(255,255,255,0.6), 0 2px 8px 0 rgba(31,38,135,0.04)',
           borderRadius: '24px',
           padding: '20px',
           animation: 'verdictIn 0.35s cubic-bezier(0.2, 0, 0, 1) 0.10s both',
@@ -505,6 +534,7 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
                     fontSize: '34px',
                     lineHeight: 1,
                     display: 'inline-block',
+                    filter: 'url(#sticker-outline) drop-shadow(0 2px 0.5px rgba(0,0,0,0.18))',
                   }}>
                     {displayEmoji}
                   </span>
@@ -547,9 +577,11 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
               width: '100%', display: 'flex', alignItems: 'center',
               justifyContent: 'center', gap: '4px',
               padding: '14px 0',
-              background: 'rgba(255,255,255,0.72)',
-              border: '1px solid rgba(255,255,255,0.85)',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
+              background: 'rgba(255,255,255,0.35)',
+              backdropFilter: 'blur(16px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+              border: '1.5px solid rgba(255,255,255,0.5)',
+              boxShadow: 'inset 0 1.5px 0 rgba(255,255,255,0.5), 0 1px 4px rgba(31,38,135,0.03)',
               borderRadius: '16px',
               cursor: 'pointer', fontFamily: 'inherit',
             }}
@@ -583,43 +615,6 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
         display: 'flex',
         gap: '8px',
       }}>
-        {/* 공유하기 — 라인 스타일 보조 버튼 */}
-        <button
-          onClick={() => {
-            const shareText = `${resolvedStockName} ${title}\n\n지금 이 종목, 사도 될까? 👉 https://stockcheck-pi.vercel.app`
-            if (navigator.share) {
-              navigator.share({ text: shareText }).catch(() => {})
-            } else {
-              navigator.clipboard?.writeText(shareText)
-            }
-          }}
-          style={{
-            width: '54px',
-            height: '54px',
-            flexShrink: 0,
-            backgroundColor: 'transparent',
-            border: '1.5px solid rgba(0,0,0,0.12)',
-            borderRadius: '14px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'transform 0.1s, background-color 0.1s',
-            WebkitTapHighlightColor: 'transparent',
-          }}
-          onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.95)' }}
-          onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
-          onTouchStart={(e) => { e.currentTarget.style.transform = 'scale(0.95)' }}
-          onTouchEnd={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
-          aria-label="공유하기"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7" stroke="var(--color-text-secondary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-            <polyline points="16,6 12,2 8,6" stroke="var(--color-text-secondary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-            <line x1="12" y1="2" x2="12" y2="15" stroke="var(--color-text-secondary)" strokeWidth="1.8" strokeLinecap="round"/>
-          </svg>
-        </button>
         {/* 다른 종목 알아보기 — 메인 CTA */}
         <button
           onClick={onReset}
@@ -646,6 +641,44 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
           onTouchEnd={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
         >
           다른 종목 알아보기
+        </button>
+        {/* 공유하기 — 보조 버튼 */}
+        <button
+          onClick={() => {
+            const shareText = `${resolvedStockName} ${title}\n\n지금 이 종목, 사도 될까? 👉 https://stockcheck-pi.vercel.app`
+            if (navigator.share) {
+              navigator.share({ text: shareText }).catch(() => {})
+            } else {
+              navigator.clipboard?.writeText(shareText)
+            }
+          }}
+          style={{
+            height: '54px',
+            padding: '0 18px',
+            flexShrink: 0,
+            backgroundColor: '#E5E7EB',
+            border: 'none',
+            borderRadius: '14px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            transition: 'transform 0.1s',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+          onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.95)' }}
+          onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
+          onTouchStart={(e) => { e.currentTarget.style.transform = 'scale(0.95)' }}
+          onTouchEnd={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
+          aria-label="공유하기"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7" stroke="var(--color-text-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <polyline points="16,6 12,2 8,6" stroke="var(--color-text-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <line x1="12" y1="2" x2="12" y2="15" stroke="var(--color-text-primary)" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
         </button>
       </div>
 
