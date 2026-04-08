@@ -22,7 +22,7 @@ export function useIssueFeed() {
         // 1. DB 캐시 조회 (유효한 항목만)
         const { data: cached } = await supabase
           .from('issue_feed')
-          .select('stock_code, stock_name, price_change, sentiment, emoji, one_line')
+          .select('stock_code, stock_name, price_change, sentiment, emoji, one_line, topic, impact')
           .gt('expires_at', new Date().toISOString())
           .limit(5)
 

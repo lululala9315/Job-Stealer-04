@@ -10,7 +10,7 @@ import stocks from '../lib/stocks.json'
 
 const fuse = new Fuse(stocks, {
   keys: ['name', 'code'],
-  threshold: 0.35,      // 낮을수록 엄격 (0.35 = 오타 1~2자 허용)
+  threshold: 0.4,       // 낮을수록 엄격 (0.4 = 오타 1~2자 여유 허용)
   distance: 100,
   minMatchCharLength: 1,
   shouldSort: true,

@@ -1,7 +1,7 @@
 /**
- * 역할: 실시간 이슈 피드 생성 Edge Function
- * 주요 기능: KIS 거래량 상위 스크리닝 + 네이버 뉴스 + Claude Haiku → DB 저장 (2시간 캐시)
- * 의존성: KIS API, 네이버 뉴스 API, ANTHROPIC_API_KEY, Supabase DB
+ * 역할: 실시간 시장 이슈 피드 생성 Edge Function (Phase 10 — 토스증권 스타일)
+ * 주요 기능: 네이버 뉴스 키워드 검색 → Claude Haiku 토픽 클러스터링 → DB 캐시 (30분)
+ * 의존성: 네이버 뉴스 API, ANTHROPIC_API_KEY, Supabase DB
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -21,176 +21,107 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
   }
 }
 
-// ─── KIS 토큰 캐시 (check-stock과 동일 로직) ──────────────────
+// ─── 네이버 뉴스 키워드 검색 ─────────────────────────────────
 
-let _kisTokenCache: { token: string; expiresAt: number } | null = null
-const KIS_TOKEN_EXPIRED_CODES = ['EGW00123', 'EGW00201', 'IGW00109']
+const NEWS_KEYWORDS = ['코스피', '코스닥', '증시', '주식시장', '금리', '환율', '유가']
 
-function isKisTokenError(data: Record<string, unknown>): boolean {
-  return KIS_TOKEN_EXPIRED_CODES.some(code => String(data.msg_cd || '').includes(code))
+interface NewsItem {
+  title: string
+  description: string
 }
 
-async function clearKisTokenCache() {
-  _kisTokenCache = null
-  try {
-    const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
-    await db.from('kis_token_cache').delete().eq('id', 'singleton')
-  } catch (_) { /* 무시 */ }
-}
-
-async function getKisToken(): Promise<string> {
-  if (_kisTokenCache && Date.now() < _kisTokenCache.expiresAt) {
-    return _kisTokenCache.token
-  }
-  const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
-  const { data: cached } = await db
-    .from('kis_token_cache')
-    .select('token, expires_at')
-    .eq('id', 'singleton')
-    .single()
-  if (cached && new Date(cached.expires_at) > new Date(Date.now() + 60_000)) {
-    _kisTokenCache = { token: cached.token, expiresAt: new Date(cached.expires_at).getTime() }
-    return cached.token
-  }
-  const res = await fetchWithTimeout('https://openapi.koreainvestment.com:9443/oauth2/tokenP', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      grant_type: 'client_credentials',
-      appkey: Deno.env.get('KIS_APP_KEY'),
-      appsecret: Deno.env.get('KIS_APP_SECRET'),
-    }),
-  }, 8000)
-  const data = await res.json()
-  if (!data.access_token) throw new Error(`KIS 토큰 발급 실패: ${JSON.stringify(data)}`)
-  const expiresAt = new Date(Date.now() + 23 * 60 * 60 * 1000)
-  _kisTokenCache = { token: data.access_token, expiresAt: expiresAt.getTime() }
-  await db.from('kis_token_cache').upsert({
-    id: 'singleton',
-    token: data.access_token,
-    expires_at: expiresAt.toISOString(),
-    updated_at: new Date().toISOString(),
-  })
-  return data.access_token
-}
-
-function kisHeaders(token: string, trId: string) {
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    appkey: Deno.env.get('KIS_APP_KEY')!,
-    appsecret: Deno.env.get('KIS_APP_SECRET')!,
-    tr_id: trId,
-  }
-}
-
-// ─── KIS 거래량 상위 스크리닝 ──────────────────────────────────
-
-interface VolumeRankItem {
-  stock_code: string
-  stock_name: string
-  price_change: number
-  vol_ratio: number
-}
-
-async function fetchVolumeRankStocks(token: string): Promise<VolumeRankItem[]> {
-  const res = await fetchWithTimeout(
-    'https://openapi.koreainvestment.com:9443/uapi/domestic-stock/v1/quotations/volume-rank?' +
-    'FID_COND_MRKT_DIV_CODE=J&FID_COND_SCR_DIV_CODE=20171&FID_INPUT_ISCD=0000' +
-    '&FID_DIV_CLS_CODE=0&FID_BLNG_CLS_CODE=0&FID_TRGT_CLS_CODE=111111111' +
-    '&FID_TRGT_EXLS_CLS_CODE=000000&FID_INPUT_PRICE_1=&FID_INPUT_PRICE_2=' +
-    '&FID_VOL_CNT=&FID_INPUT_DATE_1=',
-    { headers: kisHeaders(token, 'FHPST01710000') },
-    8000
-  )
-  const data = await res.json()
-
-  if (!data.output && isKisTokenError(data)) {
-    await clearKisTokenCache()
-    const newToken = await getKisToken()
-    return fetchVolumeRankStocks(newToken)
-  }
-
-  const items: Array<Record<string, string>> = data.output || []
-
-  // ETN/ETF/레버리지/인버스는 check-stock 분석 불가 → 필터링
-  const UNSUPPORTED = ['ETN', 'ETF', '레버리지', '인버스', '선물', 'KODEX', 'TIGER', 'KBSTAR', 'ARIRANG', 'HANARO']
-
-  return items
-    .map(item => ({
-      stock_code: item.mksc_shrn_iscd,
-      stock_name: item.hts_kor_isnm,
-      price_change: parseFloat(item.prdy_ctrt || '0'),
-      vol_ratio: parseFloat(item.vol_inrt || '0'),
-    }))
-    .filter(item =>
-      !UNSUPPORTED.some(kw => item.stock_name?.includes(kw)) &&
-      (item.vol_ratio >= 200 || Math.abs(item.price_change) >= 3)
-    )
-    .slice(0, 5)
-}
-
-// ─── 네이버 뉴스 ───────────────────────────────────────────────
-
-async function fetchNewsHeadlines(stockName: string): Promise<string[]> {
+async function fetchMarketNews(): Promise<NewsItem[]> {
   const clientId = Deno.env.get('NAVER_CLIENT_ID')
   const clientSecret = Deno.env.get('NAVER_CLIENT_SECRET')
   if (!clientId || !clientSecret) return []
-  try {
-    const url = `https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(stockName)}&display=3&sort=date`
-    const res = await fetchWithTimeout(url, {
-      headers: {
-        'X-Naver-Client-Id': clientId,
-        'X-Naver-Client-Secret': clientSecret,
-        'User-Agent': 'Mozilla/5.0',
-      },
-    }, 4000)
-    if (!res.ok) return []
-    const data = await res.json()
-    return (data.items || []).map((item: { title: string }) =>
-      item.title.replace(/<[^>]+>/g, '')
-    )
-  } catch (_) {
-    return []
+
+  // 키워드별 뉴스 병렬 수집
+  const results = await Promise.allSettled(
+    NEWS_KEYWORDS.map(async (keyword) => {
+      const url = `https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(keyword)}&display=5&sort=date`
+      const res = await fetchWithTimeout(url, {
+        headers: {
+          'X-Naver-Client-Id': clientId,
+          'X-Naver-Client-Secret': clientSecret,
+          'User-Agent': 'Mozilla/5.0',
+        },
+      }, 4000)
+      if (!res.ok) return []
+      const data = await res.json()
+      return (data.items || []).map((item: { title: string; description: string }) => ({
+        title: item.title.replace(/<[^>]+>/g, '').trim(),
+        description: (item.description || '').replace(/<[^>]+>/g, '').trim(),
+      }))
+    })
+  )
+
+  // 성공한 결과만 합침
+  const allNews: NewsItem[] = []
+  for (const r of results) {
+    if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+      allNews.push(...r.value)
+    }
   }
+
+  // 제목 기준 중복 제거
+  const seen = new Set<string>()
+  return allNews.filter(item => {
+    if (seen.has(item.title)) return false
+    seen.add(item.title)
+    return true
+  })
 }
 
-// ─── Claude Haiku 이슈 분석 ────────────────────────────────────
+// ─── Claude Haiku 토픽 클러스터링 ──────────────────────────────
 
-interface IssueFeedItem {
-  stock_code: string
-  stock_name: string
-  price_change: number
-  issue_type: string
+interface TopicItem {
+  topic: string
+  impact: string
   sentiment: string
   emoji: string
+  stock_name: string
+  stock_code: string
   one_line: string
-  plain_explain: string
 }
 
-async function analyzeWithLLM(
-  stocks: Array<VolumeRankItem & { headlines: string[] }>
-): Promise<IssueFeedItem[]> {
+async function clusterWithLLM(news: NewsItem[]): Promise<TopicItem[]> {
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')!
-  const stockList = stocks.map(s =>
-    `- ${s.stock_name}(${s.stock_code}): ${s.price_change > 0 ? '+' : ''}${s.price_change}%, 뉴스: ${s.headlines.join(' / ') || '없음'}`
-  ).join('\n')
 
-  const prompt = `아래 종목들의 오늘 이슈를 분석해서 JSON 배열로만 응답해. 다른 텍스트 없이 JSON만.
+  const headlines = news.map(n => `- ${n.title}`).join('\n')
 
-${stockList}
+  const prompt = `아래 오늘 증권/경제 뉴스 헤드라인들을 분석해서, 가장 중요한 시장 이슈 토픽 최대 5개로 클러스터링해.
 
-각 항목:
-{
-  "stock_code": "종목코드",
-  "stock_name": "종목명",
-  "price_change": 숫자,
-  "issue_type": "임상실패|수주|실적|거시경제|루머|기타 중 하나",
-  "sentiment": "위험|주의|긍정 중 하나 (하락+부정뉴스=위험, 상승+긍정뉴스=긍정, 그 외=주의)",
-  "emoji": "이슈에 맞는 이모지 1개",
-  "one_line": "10자 이내. 반말. 이슈 핵심. 예: '임상 또 실패', '미국 수주 터짐'",
-  "plain_explain": "2문장 이내. 반말. 전문용어 절대 금지. 중학생도 이해 가능하게."
-}`
+${headlines}
+
+각 토픽에 대해 아래 JSON 배열로만 응답해. 다른 텍스트 없이 JSON만.
+
+[
+  {
+    "topic": "토픽 제목 (구체적으로, 예: '미국-이란 휴전 합의', '삼성전자 1분기 실적 서프라이즈')",
+    "impact": "시장 영향 요약 (예: '유가 급락, 반도체주 랠리', '코스피 7% 급등')",
+    "sentiment": "긍정|주의|위험 중 하나",
+    "emoji": "토픽에 맞는 이모지 1개",
+    "stock_name": "가장 직접적 영향 받는 한국 상장 종목명 1개",
+    "stock_code": "해당 종목 6자리 코드 (모르면 빈 문자열)",
+    "one_line": "배너 한 줄 텍스트 (아래 예시 참고)"
+  }
+]
+
+one_line 작성 규칙 (매우 중요):
+- 형식: "[구체적 이벤트] · [종목명] [영향]"
+- 좋은 예: "미국-이란 휴전 합의 · SK이노베이션 급락"
+- 좋은 예: "반도체 수출 규제 완화 · 삼성전자 랠리"
+- 좋은 예: "가계대출 4개월 만에 증가 · 키움증권 강세"
+- 나쁜 예: "중동 휴전 · 삼성전자 랠리" (너무 축약, 무슨 휴전인지 모름)
+- 나쁜 예: "반도체 실적 · SK하이닉스 폭주" (무슨 실적인지 모름)
+- 왕초보가 읽어도 무슨 일이 있었는지 바로 이해되어야 함
+
+기타 규칙:
+- 비슷한 뉴스는 하나의 토픽으로 묶어
+- 토픽은 중요도 순으로 정렬 (뉴스 수 많을수록 중요)
+- stock_name은 반드시 한국 KOSPI/KOSDAQ 상장 종목 (ETF/ETN 제외)
+- stock_code를 모르면 빈 문자열로, 절대 틀린 코드 넣지 마
+- sentiment: 시장에 부정적=위험, 불확실=주의, 긍정적=긍정`
 
   const res = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -201,11 +132,11 @@ ${stockList}
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1000,
-      temperature: 0.5,
+      max_tokens: 1200,
+      temperature: 0.3,
       messages: [{ role: 'user', content: prompt }],
     }),
-  }, 20000)
+  }, 25000)
 
   const raw = await res.text()
   let result: Record<string, unknown>
@@ -216,7 +147,7 @@ ${stockList}
   const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
   const match = cleaned.match(/\[[\s\S]*\]/)
   if (!match) return []
-  try { return JSON.parse(match[0]) as IssueFeedItem[] } catch (_) { return [] }
+  try { return JSON.parse(match[0]) as TopicItem[] } catch (_) { return [] }
 }
 
 // ─── 메인 핸들러 ─────────────────────────────────────────────
@@ -232,7 +163,7 @@ Deno.serve(async (req) => {
   )
 
   try {
-    // 1. DB 캐시 조회 (2시간 유효)
+    // 1. DB 캐시 조회 (30분 유효)
     const { data: cached } = await db
       .from('issue_feed')
       .select('*')
@@ -246,40 +177,43 @@ Deno.serve(async (req) => {
       })
     }
 
-    // 2. KIS 거래량 상위 스크리닝
-    const kisToken = await getKisToken()
-    const volumeStocks = await fetchVolumeRankStocks(kisToken)
-
-    if (volumeStocks.length === 0) {
+    // 2. 네이버 뉴스 키워드 수집
+    const news = await fetchMarketNews()
+    if (news.length === 0) {
       return new Response(JSON.stringify({ issues: [] }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    // 3. 네이버 뉴스 수집 (병렬)
-    const stocksWithNews = await Promise.all(
-      volumeStocks.map(async (stock) => ({
-        ...stock,
-        headlines: await fetchNewsHeadlines(stock.stock_name),
-      }))
-    )
-
-    // 4. Claude Haiku 이슈 분석
-    const issues = await analyzeWithLLM(stocksWithNews)
-    if (issues.length === 0) {
+    // 3. Claude Haiku 토픽 클러스터링
+    const topics = await clusterWithLLM(news)
+    if (topics.length === 0) {
       return new Response(JSON.stringify({ issues: [] }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    // 5. DB 저장 (기존 만료 데이터 삭제 후 INSERT)
+    // 4. DB 저장 (기존 만료 데이터 삭제 후 INSERT)
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString()
     await db.from('issue_feed').delete().lt('expires_at', new Date().toISOString())
-    await db.from('issue_feed').insert(
-      issues.map(item => ({ ...item, expires_at: expiresAt }))
-    )
 
-    return new Response(JSON.stringify({ issues }), {
+    const rows = topics.map(t => ({
+      topic: t.topic,
+      impact: t.impact,
+      stock_code: t.stock_code || '',
+      stock_name: t.stock_name || '',
+      price_change: null,
+      issue_type: '거시경제',
+      sentiment: t.sentiment || '주의',
+      emoji: t.emoji || '📰',
+      one_line: t.one_line || `${t.topic} · ${t.stock_name}`,
+      plain_explain: '',
+      expires_at: expiresAt,
+    }))
+
+    await db.from('issue_feed').insert(rows)
+
+    return new Response(JSON.stringify({ issues: rows }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
 

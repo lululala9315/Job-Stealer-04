@@ -46,28 +46,16 @@ export default function SearchScreen({ onSearch, isSearching = false }) {
     return () => clearInterval(id)
   }, [issues.length])
 
-  // 이모지 crossfade — A/B 두 레이어를 교대로 사용해 빈 화면 없이 전환
+  // 이모지 애니메이션 — 프레임 인덱스만 순환, 프리렌더된 이미지를 visibility로 토글
   const [emojiIdx, setEmojiIdx] = useState(0)
-  const [activeLayer, setActiveLayer] = useState('a')
-  const [srcA, setSrcA] = useState(EMOJI_SEQUENCE[0].src)
-  const [srcB, setSrcB] = useState(EMOJI_SEQUENCE[1].src)
+  const emojiUniqueSrcs = [...new Set(EMOJI_SEQUENCE.map(s => s.src))]
 
   useEffect(() => {
     const id = setTimeout(() => {
-      const nextIdx = (emojiIdx + 1) % EMOJI_SEQUENCE.length
-      if (activeLayer === 'a') {
-        // B에 다음 이미지 세팅 후 B를 앞으로
-        setSrcB(EMOJI_SEQUENCE[nextIdx].src)
-        setActiveLayer('b')
-      } else {
-        // A에 다음 이미지 세팅 후 A를 앞으로
-        setSrcA(EMOJI_SEQUENCE[nextIdx].src)
-        setActiveLayer('a')
-      }
-      setEmojiIdx(nextIdx)
+      setEmojiIdx(i => (i + 1) % EMOJI_SEQUENCE.length)
     }, EMOJI_SEQUENCE[emojiIdx].duration)
     return () => clearTimeout(id)
-  }, [emojiIdx, activeLayer])
+  }, [emojiIdx])
 
   const [value, setValue] = useState('')
   const [focused, setFocused] = useState(false)
@@ -123,14 +111,11 @@ export default function SearchScreen({ onSearch, isSearching = false }) {
           pointerEvents: 'none',
           animation: 'emojiFloat 3s ease-in-out infinite',
         }}>
-          {/* crossfade — Grid 스택으로 drop-shadow 클리핑 방지 */}
+          {/* 모든 프레임 프리렌더 — visibility 토글로 깜빡임 없이 전환 */}
           <div style={{ display: 'grid', padding: '10px' }}>
-            {[
-              { src: srcA, visible: activeLayer === 'a' },
-              { src: srcB, visible: activeLayer === 'b' },
-            ].map(({ src, visible }, i) => (
+            {emojiUniqueSrcs.map((src) => (
               <img
-                key={i}
+                key={src}
                 src={src}
                 alt=""
                 style={{
@@ -138,15 +123,13 @@ export default function SearchScreen({ onSearch, isSearching = false }) {
                   justifySelf: 'center',
                   height: '56px',
                   width: 'auto',
-                  opacity: visible ? 1 : 0,
-                  transition: 'opacity 150ms ease',
+                  visibility: src === EMOJI_SEQUENCE[emojiIdx].src ? 'visible' : 'hidden',
                   filter: `
                     drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff)
                     drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff)
                     drop-shadow(2px 2px 0 #fff) drop-shadow(-2px -2px 0 #fff)
                     drop-shadow(2px -2px 0 #fff) drop-shadow(-2px 2px 0 #fff)
-                    drop-shadow(0 3px 6px rgba(0,0,0,0.07))
-                    drop-shadow(0 1px 2px rgba(0,0,0,0.05))
+                    drop-shadow(0 2px 1px rgba(0,0,0,0.10))
                   `,
                 }}
               />
@@ -403,7 +386,7 @@ export default function SearchScreen({ onSearch, isSearching = false }) {
                 animation: 'bannerFadeIn 0.4s ease',
               }}
             >
-              {resolveStockName(issues[bannerIdx]?.stock_name, issues[bannerIdx]?.stock_code)} {issues[bannerIdx]?.one_line}
+              {issues[bannerIdx]?.one_line}
             </span>
             <span style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', flexShrink: 0 }}>›</span>
           </button>

@@ -337,7 +337,7 @@ RLS 활성화. `check_history` — 본인 데이터만 접근. `issue_feed` — 
 
 ---
 
-## 구현 상태 (2026-04-07)
+## 구현 상태 (2026-04-09)
 
 ### Phase 1~3 완료
 - Phase 1: 의존성 정리, 글래스모피즘 토큰, DB 마이그레이션 ✅
@@ -378,6 +378,39 @@ RLS 활성화. `check_history` — 본인 데이터만 접근. `issue_feed` — 
 - `supabase/functions/check-stock/index.ts` — LOSS_LABELS/GAIN_LABELS 룩업 테이블, "날린다" 제거
 
 **배너 구조:** `✦ 실시간 이슈  [종목명 이슈텍스트]  ›` — 한 줄, 배경 없음, 박스 없음
+
+---
+
+### Phase 11 — 시뮬레이션 고도화 + UX 개선 ✅ 완료 (2026-04-09)
+
+**몬테카를로 GBM 시뮬레이션 (check-stock Edge Function):**
+- 기존 선형 비례(`annualReturn × years`) → 1000경로 기하 브라운 운동
+- 기간별 드리프트 가중 블렌딩: 3개월(단기5일 70%), 6개월(중기10일 40%), 1년(중기 20%)
+- Box-Muller 정규분포 난수, GBM `exp(μdt + σ√dt·Z)` 일별 시뮬레이션
+- 중위값(50th) = amount, 90th = bestAmount, 10th = worstAmount
+- 기간별로 독립적인 방향 가능 (3개월↓ 6개월↑ 등)
+- 클램프 범위 확대: -40% ~ +50% (기존 -20% ~ +30%)
+
+**시뮬레이션 카드 UX:**
+- 세로 구분선 추가 (40% 높이, `rgba(0,0,0,0.06)`)
+- 칼럼 패딩 8px → 14px
+- 치환 라벨 15px 700 (메인) + 금액 12px 500 (보조)
+
+**치환 데이터 전면 교체:**
+- 서버+클라이언트 LABELS 통일: 24단계 현실 가격 기반 (5천원 아메리카노 ~ 1.5억 수입차)
+- 클라이언트 룩업 우선 (LLM 부정확 라벨 무시)
+- 이모지+치환값 항상 같은 소스(LIFE_LABELS)에서 매칭
+- ok/hold 기대값 마이너스 시 bestAmount로 자동 전환
+
+**종목 데이터:**
+- stocks.json 138개 → 527개 (코스닥 시총 상위 대량 추가)
+- 네이버 API(`m.stock.naver.com/api/stock/{code}/basic`)로 전수 검증, 불일치 0개
+- Fuse.js threshold 0.35 → 0.4 (오타 허용 확대)
+
+**이모지 시스템 개편:**
+- 등급별 랜덤 2종: ban(exploding/screaming), wait(peekingeye/grimacing), ok(cowboy/smiling), hold(thinking/rollingeyes)
+- 시퀀스 2사이클+정면마무리 (9프레임): frontal→right→frontal→left→frontal→right→frontal→left→frontal
+- 깜빡임 해결: crossfade+opacity → 전 프레임 프리렌더+visibility 토글 (3곳 통일)
 
 ---
 

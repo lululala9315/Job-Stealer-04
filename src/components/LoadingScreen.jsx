@@ -31,16 +31,13 @@ const STICKER_FILTER = `
   drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff)
   drop-shadow(2px 2px 0 #fff) drop-shadow(-2px -2px 0 #fff)
   drop-shadow(2px -2px 0 #fff) drop-shadow(-2px 2px 0 #fff)
-  drop-shadow(0 3px 6px rgba(0,0,0,0.07))
-  drop-shadow(0 1px 2px rgba(0,0,0,0.05))
+  drop-shadow(0 2px 1px rgba(0,0,0,0.10))
 `
 
 export default function LoadingScreen() {
   const [msgIdx, setMsgIdx]           = useState(0)
   const [emojiIdx, setEmojiIdx]       = useState(0)
-  const [activeLayer, setActiveLayer] = useState('a')
-  const [srcA, setSrcA] = useState(EMOJI_SEQUENCE[0].src)
-  const [srcB, setSrcB] = useState(EMOJI_SEQUENCE[1].src)
+  const emojiUniqueSrcs = [...new Set(EMOJI_SEQUENCE.map(s => s.src))]
   const [progress, setProgress]       = useState(0)
 
   // 2.5초마다 로딩 메시지 순환
@@ -49,21 +46,13 @@ export default function LoadingScreen() {
     return () => clearInterval(id)
   }, [])
 
-  // 이모지 crossfade — A/B 레이어 방식 (깜빡임 없음)
+  // 이모지 프레임 순환 — 프리렌더된 이미지를 visibility로 토글
   useEffect(() => {
     const id = setTimeout(() => {
-      const nextIdx = (emojiIdx + 1) % EMOJI_SEQUENCE.length
-      if (activeLayer === 'a') {
-        setSrcB(EMOJI_SEQUENCE[nextIdx].src)
-        setActiveLayer('b')
-      } else {
-        setSrcA(EMOJI_SEQUENCE[nextIdx].src)
-        setActiveLayer('a')
-      }
-      setEmojiIdx(nextIdx)
+      setEmojiIdx(i => (i + 1) % EMOJI_SEQUENCE.length)
     }, EMOJI_SEQUENCE[emojiIdx].duration)
     return () => clearTimeout(id)
-  }, [emojiIdx, activeLayer])
+  }, [emojiIdx])
 
   // 진행률 시뮬레이션 — 지수 감속 곡선으로 90%까지 (~8초)
   useEffect(() => {
@@ -103,15 +92,12 @@ export default function LoadingScreen() {
         padding: '0 20px',
       }}>
 
-        {/* 이모지 crossfade */}
+        {/* 모든 프레임 프리렌더 — visibility 토글로 깜빡임 방지 */}
         <div style={{ pointerEvents: 'none', userSelect: 'none' }}>
           <div style={{ display: 'grid', padding: '12px' }}>
-            {[
-              { src: srcA, visible: activeLayer === 'a' },
-              { src: srcB, visible: activeLayer === 'b' },
-            ].map(({ src, visible }, i) => (
+            {emojiUniqueSrcs.map((src) => (
               <img
-                key={i}
+                key={src}
                 src={src}
                 alt=""
                 draggable={false}
@@ -120,8 +106,7 @@ export default function LoadingScreen() {
                   justifySelf: 'center',
                   height: '80px',
                   width: 'auto',
-                  opacity: visible ? 1 : 0,
-                  transition: 'opacity 200ms ease',
+                  visibility: src === EMOJI_SEQUENCE[emojiIdx].src ? 'visible' : 'hidden',
                   filter: STICKER_FILTER,
                 }}
               />
