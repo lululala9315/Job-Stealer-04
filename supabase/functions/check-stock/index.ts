@@ -74,6 +74,22 @@ interface NewsSignals {
   dataAvailable: boolean
 }
 
+/** 실제 뉴스 기사 (LLM 직접 분석용) */
+interface NewsItem {
+  title: string
+  description: string
+  pubDate: string
+}
+
+/** DART 공시 기반 위험 신호 */
+interface DartData {
+  available: boolean
+  isAdminStock: boolean        // 관리종목 지정
+  isInvestmentWarning: boolean // 투자주의/경고/위험 발령
+  isDelistingRisk: boolean     // 상장폐지 예고/심사
+  warnings: string[]           // 실제 위험 공시 제목 목록
+}
+
 interface VerdictResult {
   stockName: string
   stockCode: string
@@ -141,10 +157,15 @@ Deno.serve(async (req) => {
       return jsonError('종목명 또는 코드를 입력해줘', 400)
     }
 
+    // 미국 주식 티커 패턴 차단 — 한글 없는 영문 1~5자 (AAPL, TSLA 등)
+    if (/^[A-Za-z]{1,5}$/.test(query.trim()) && !/[가-힣]/.test(query.trim())) {
+      return jsonError('미국 주식은 아직 지원하지 않아. 한국 종목명이나 6자리 코드로 검색해줘!', 400)
+    }
+
     const investAmount = rawAmount || 1_000_000
 
     // Mock 모드 (API 키 미설정 시)
-    const isMockMode = !Deno.env.get('KIS_APP_KEY') || !Deno.env.get('GEMINI_API_KEY')
+    const isMockMode = !Deno.env.get('KIS_APP_KEY') || !Deno.env.get('ANTHROPIC_API_KEY')
     if (isMockMode) {
       // priceOnly Mock — 바텀시트 주수 계산용
       if (priceOnly) {
@@ -176,11 +197,12 @@ Deno.serve(async (req) => {
       )
     }
 
-    // ── 3축 병렬 데이터 수집 ──
+    // ── 4축 병렬 데이터 수집 (DART 추가) ──
     const [
       [priceData, dailyData, institutionalData],
       marketSignals,
-      newsSignals,
+      newsItems,
+      dartData,
     ] = await Promise.all([
       // 종목축: KIS API
       Promise.all([
@@ -188,50 +210,69 @@ Deno.serve(async (req) => {
         fetchDailyData(stockCode, kisToken),
         fetchInstitutionalData(stockCode, kisToken),
       ]),
-      // 시장축: assetx2 API
+      // 시장축: Yahoo Finance + Alternative.me
       fetchMarketSignals(),
-      // 뉴스축: 네이버 뉴스 (종목명은 priceData 전에 알 수 없어서 query 사용)
-      fetchNewsSignals(query),
+      // 뉴스축: 네이버 뉴스 실제 기사 내용
+      fetchNewsItems(query),
+      // 공시축: DART 관리종목/투자주의 체크
+      fetchDartData(stockCode),
     ])
 
     const stockName = priceData.stockName
 
-    // 뉴스 신호를 실제 종목명으로 재조회 (query가 코드였을 경우 보완)
-    const finalNewsSignals = stockName !== query
-      ? await fetchNewsSignals(stockName).catch(() => newsSignals)
-      : newsSignals
+    // 뉴스를 실제 종목명으로 재조회 (query가 코드였을 경우 보완)
+    const finalNewsItems = stockName !== query
+      ? await fetchNewsItems(stockName).catch(() => newsItems)
+      : newsItems
 
-    // ── 3축 스코어링 ──
+    // ── 참고용 룰 기반 스코어 (LLM 컨텍스트로만 활용) ──
     const stockScore = scoreStock(priceData, dailyData, institutionalData)
     const marketScore = scoreMarket(marketSignals, priceData.marketType)
-    const newsScore = scoreNews(finalNewsSignals, priceData, dailyData)
-
-    // ── 판결 등급 결정 ──
-    const verdict = combineVerdict(stockScore, marketScore, newsScore, priceData, marketSignals, institutionalData)
 
     // ── 시뮬레이션 ──
     const simulation = buildSimulation(priceData, dailyData, investAmount)
 
-    // ── LLM 판결 멘트 생성 ──
-    const llmResult = await generateVerdictWithLLM({
+    // ── LLM이 전체 데이터로 직접 판정 ──
+    const llmResult = await analyzeWithLLM({
       stockName, stockCode, investAmount,
-      priceData, dailyData, verdict,
-      stockScore, marketScore, newsScore,
-      marketSignals, newsSignals: finalNewsSignals,
+      priceData, dailyData, marketSignals,
+      newsItems: finalNewsItems, dartData,
+      stockScore, marketScore,
       simulation,
     })
+
+    // ── 강제 트리거 안전망 (LLM이 놓쳤을 경우 대비) ──
+    const forceBan = dartData.isAdminStock || dartData.isInvestmentWarning || dartData.isDelistingRisk || marketSignals.vix >= 35
+    if (forceBan && llmResult.grade !== 'ban') {
+      llmResult.grade = 'ban'
+      llmResult.score = Math.max(llmResult.score ?? 0, 75)
+    }
+
+    // grade → label/emoji 매핑
+    const VERDICT_META: Record<string, { label: string; emoji: string }> = {
+      ban:  { label: '절대금지',    emoji: '🚨' },
+      wait: { label: '대기',        emoji: '🤔' },
+      ok:   { label: '괜찮아 보여', emoji: '👀' },
+      hold: { label: '관망',        emoji: '🫥' },
+    }
+    const verdictMeta = VERDICT_META[llmResult.grade] || VERDICT_META.hold
+
+    // lossConversion — LLM 생성, 실패 시 룩업 테이블 fallback
+    const worstLoss = Math.round(investAmount * Math.abs(simulation.shortTerm.threeDayRange.worstCase) / 100)
+    const lossLabel = getLossLabel(worstLoss)
+    const lossConversion = llmResult.lossConversion || `${lossLabel.emoji} ${lossLabel.text} 날릴 수도 있어`
 
     const result: VerdictResult = {
       stockName,
       stockCode,
       investAmount,
       verdict: {
-        grade: verdict.grade,
-        label: verdict.label,
-        emoji: verdict.emoji,
-        score: verdict.totalScore,
+        grade: llmResult.grade,
+        label: verdictMeta.label,
+        emoji: verdictMeta.emoji,
+        score: llmResult.score,
         headlineMent: llmResult.headlineMent,
-        lossConversion: llmResult.lossConversion,
+        lossConversion,
       },
       reasons: llmResult.reasons || [],
       rawData: llmResult.rawData,
@@ -243,7 +284,7 @@ Deno.serve(async (req) => {
       signals: {
         stock: { score: stockScore.score, breakdown: stockScore.breakdown },
         market: { score: marketScore.score, breakdown: marketScore.breakdown },
-        news: { score: newsScore.score, breakdown: newsScore.breakdown },
+        news: { score: 0, breakdown: {} },
       },
     }
 
@@ -261,8 +302,8 @@ Deno.serve(async (req) => {
         stock_price_at_check: priceData.currentPrice,
         summary: llmResult.headlineMent,
         invest_amount: investAmount,
-        verdict_grade: verdict.grade,
-        verdict_score: verdict.totalScore,
+        verdict_grade: llmResult.grade,
+        verdict_score: llmResult.score,
       })
     }
 
@@ -646,6 +687,111 @@ async function fetchNewsSignals(stockName: string): Promise<NewsSignals> {
   }
 }
 
+// ─── DART API (관리종목/투자주의 공식 공시 체크) ─────────────
+
+/** DART 공시 조회 — 관리종목/투자주의/상장폐지 여부 확인 */
+async function fetchDartData(stockCode: string): Promise<DartData> {
+  const empty: DartData = {
+    available: false, isAdminStock: false,
+    isInvestmentWarning: false, isDelistingRisk: false, warnings: [],
+  }
+
+  const apiKey = Deno.env.get('DART_API_KEY')
+  if (!apiKey) return empty
+
+  try {
+    // 1. 종목코드 → DART corp_code 변환
+    const corpRes = await fetchWithTimeout(
+      `https://opendart.fss.or.kr/api/company.json?crtfc_key=${apiKey}&stock_code=${stockCode}`,
+      { headers: { 'User-Agent': 'Mozilla/5.0' } },
+      4000
+    )
+    if (!corpRes.ok) return empty
+    const corpData = await corpRes.json()
+    const corpCode = corpData.corp_code
+    if (!corpCode || corpData.status === '013') return empty // 013 = 조회 데이터 없음
+
+    // 2. 최근 2년 공시 전체 조회
+    const now = new Date()
+    const twoYearsAgo = new Date(now.getFullYear() - 2, now.getMonth(), now.getDate())
+    const bgn_de = twoYearsAgo.toISOString().slice(0, 10).replace(/-/g, '')
+    const end_de = now.toISOString().slice(0, 10).replace(/-/g, '')
+
+    const listRes = await fetchWithTimeout(
+      `https://opendart.fss.or.kr/api/list.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bgn_de=${bgn_de}&end_de=${end_de}&page_count=100`,
+      { headers: { 'User-Agent': 'Mozilla/5.0' } },
+      5000
+    )
+    if (!listRes.ok) return { ...empty, available: true }
+    const listData = await listRes.json()
+    const disclosures: Array<{ report_nm: string }> = listData.list || []
+
+    const warnings: string[] = []
+    let isAdminStock = false
+    let isInvestmentWarning = false
+    let isDelistingRisk = false
+
+    const ADMIN_KEYWORDS = ['관리종목']
+    const WARNING_KEYWORDS = ['투자주의', '투자경고', '투자위험', '불성실공시']
+    const DELIST_KEYWORDS = ['상장폐지', '상장적격성', '상장폐지 예고']
+
+    for (const d of disclosures) {
+      const nm = d.report_nm || ''
+      if (ADMIN_KEYWORDS.some(k => nm.includes(k))) {
+        isAdminStock = true
+        if (!warnings.includes(nm)) warnings.push(nm)
+      }
+      if (WARNING_KEYWORDS.some(k => nm.includes(k))) {
+        isInvestmentWarning = true
+        if (!warnings.includes(nm)) warnings.push(nm)
+      }
+      if (DELIST_KEYWORDS.some(k => nm.includes(k))) {
+        isDelistingRisk = true
+        if (!warnings.includes(nm)) warnings.push(nm)
+      }
+    }
+
+    return {
+      available: true,
+      isAdminStock,
+      isInvestmentWarning,
+      isDelistingRisk,
+      warnings: warnings.slice(0, 5),
+    }
+  } catch (e) {
+    console.log('DART 조회 실패:', e instanceof Error ? e.message : e)
+    return empty
+  }
+}
+
+/** 네이버 뉴스 — 실제 기사 내용 반환 (LLM 직접 분석용) */
+async function fetchNewsItems(stockName: string): Promise<NewsItem[]> {
+  const clientId = Deno.env.get('NAVER_CLIENT_ID')
+  const clientSecret = Deno.env.get('NAVER_CLIENT_SECRET')
+  if (!clientId || !clientSecret) return []
+
+  try {
+    const url = `https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(stockName)}&display=7&sort=date`
+    const res = await fetchWithTimeout(url, {
+      headers: {
+        'X-Naver-Client-Id': clientId,
+        'X-Naver-Client-Secret': clientSecret,
+      },
+    }, 4000)
+    if (!res.ok) return []
+    const data = await res.json()
+    const items: Array<{ title: string; description: string; pubDate: string }> = data.items || []
+    // HTML 태그 제거 후 반환
+    return items.slice(0, 7).map(item => ({
+      title: item.title.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"'),
+      description: item.description.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"'),
+      pubDate: item.pubDate,
+    }))
+  } catch {
+    return []
+  }
+}
+
 // ─── 3축 스코어링 엔진 ───────────────────────────────────────
 
 interface ScoreResult {
@@ -850,30 +996,42 @@ function combineVerdict(
 
 // ─── 시뮬레이션 ─────────────────────────────────────────────
 
-/** 손실 표현 룩업 — "날린다" 대신 엉뚱한 실생활 치환 */
+/** 손실 표현 룩업 — 금액대별 실생활 치환 아이템 */
 const LOSS_LABELS = [
-  { max: 10000,    text: '편의점 야식 한 번', emoji: '🍜' },
-  { max: 30000,    text: '택시비 한 번', emoji: '🚕' },
-  { max: 50000,    text: '치킨 한 마리', emoji: '🍗' },
-  { max: 100000,   text: '디즈니플러스 5개월치', emoji: '🎬' },
-  { max: 200000,   text: '제주도 편도', emoji: '✈️' },
-  { max: 500000,   text: '제주도 왕복 두 번', emoji: '🏝️' },
-  { max: 1000000,  text: '메타버스에서 집', emoji: '🏠' },
-  { max: 3000000,  text: '한강뷰 원룸 한 달', emoji: '🌆' },
-  { max: Infinity, text: '꿈에서만 살 수 있는 금액', emoji: '💭' },
+  { max: 12000,    text: '편의점 야식',               emoji: '🍜' },
+  { max: 25000,    text: '떡볶이 2인분',              emoji: '🌶️' },
+  { max: 40000,    text: '치킨 한 마리',              emoji: '🍗' },
+  { max: 60000,    text: '삼겹살 2인분',              emoji: '🥩' },
+  { max: 90000,    text: '헬스장 한 달',              emoji: '🏋️' },
+  { max: 130000,   text: '치킨 5마리',                emoji: '🍗' },
+  { max: 180000,   text: '콘서트 좌석 하나',          emoji: '🎵' },
+  { max: 250000,   text: '제주도 편도 항공권',        emoji: '✈️' },
+  { max: 350000,   text: '운동화 한 켤레',            emoji: '👟' },
+  { max: 500000,   text: '제주도 왕복',               emoji: '🏝️' },
+  { max: 700000,   text: '갤럭시 버즈',               emoji: '🎧' },
+  { max: 1000000,  text: '중고 닌텐도 스위치',        emoji: '🎮' },
+  { max: 1500000,  text: '최신 아이폰 절반 가격',     emoji: '📱' },
+  { max: 2500000,  text: '중고 맥북',                 emoji: '💻' },
+  { max: 4000000,  text: '유럽행 왕복 항공권',        emoji: '🌍' },
+  { max: 7000000,  text: '한강뷰 원룸 보증금 일부',   emoji: '🌆' },
+  { max: Infinity, text: '꿈에서나 살 수 있는 것들',  emoji: '💭' },
 ]
 
-/** 수익 표현 룩업 — 구체적이고 재밌는 실생활 치환 */
+/** 수익 표현 룩업 — 금액대별 실생활 치환 아이템 */
 const GAIN_LABELS = [
-  { max: 10000,    text: '아메리카노 한 잔 수준', emoji: '☕' },
-  { max: 30000,    text: '편의점 간식 한 세트', emoji: '🍫' },
-  { max: 50000,    text: '치킨 한 마리', emoji: '🍗' },
-  { max: 100000,   text: '소고기 한 팩', emoji: '🥩' },
-  { max: 200000,   text: '에어팟 케이블 새 걸로', emoji: '🎧' },
-  { max: 500000,   text: '아이패드 반 대', emoji: '📱' },
-  { max: 1000000,  text: '꿈에서 스테이크', emoji: '🍖' },
-  { max: 3000000,  text: '국내 여행 풀코스', emoji: '🗺️' },
-  { max: Infinity, text: '꿈에서 차 한 대', emoji: '🚗' },
+  { max: 5000,     text: '편의점 커피',               emoji: '☕' },
+  { max: 15000,    text: '떡볶이 한 그릇',            emoji: '🌶️' },
+  { max: 30000,    text: '버거 세트 하나',            emoji: '🍔' },
+  { max: 50000,    text: '치킨 한 마리',              emoji: '🍗' },
+  { max: 80000,    text: '소고기 한 팩',              emoji: '🥩' },
+  { max: 150000,   text: '에어팟 케이블',             emoji: '🎧' },
+  { max: 300000,   text: '무선 청소기 필터 세트',     emoji: '🧹' },
+  { max: 500000,   text: '아이패드 반 대',            emoji: '📱' },
+  { max: 800000,   text: '갤럭시 버즈 신형',          emoji: '🎵' },
+  { max: 1500000,  text: '국내여행 2박 3일',          emoji: '🗺️' },
+  { max: 3000000,  text: '최신 아이폰',               emoji: '📱' },
+  { max: 6000000,  text: '중고 외제차 할부금',        emoji: '🚗' },
+  { max: Infinity, text: '꿈에서나 벌 수 있는 금액', emoji: '💰' },
 ]
 
 /** 금액에 맞는 손실 표현 선택 */
@@ -1049,128 +1207,205 @@ async function callLLM(prompt: string): Promise<string> {
   return text
 }
 
-/** 판결 멘트 + 비유 근거 + 치환 텍스트 Gemini 생성 */
-async function generateVerdictWithLLM(ctx: {
+/**
+ * LLM 통합 분석 — 모든 데이터(DART + 뉴스 본문 + KIS + 시장)를 보고 판정 직접 수행
+ * 기존: 룰로 등급 결정 → LLM은 텍스트만 생성
+ * 변경: LLM이 전체 맥락으로 등급 + 근거 + 텍스트 모두 결정
+ */
+async function analyzeWithLLM(ctx: {
   stockName: string
   stockCode: string
   investAmount: number
   priceData: PriceData
   dailyData: DailyBar[]
-  verdict: { grade: string; label: string; totalScore: number }
+  marketSignals: MarketSignals
+  newsItems: NewsItem[]
+  dartData: DartData
   stockScore: ScoreResult
   marketScore: ScoreResult
-  newsScore: ScoreResult
-  marketSignals: MarketSignals
-  newsSignals: NewsSignals
   simulation: VerdictResult['simulation']
-}) {
-  const { stockName, stockCode, investAmount, priceData, dailyData, verdict, simulation } = ctx
+}): Promise<{
+  grade: 'ban' | 'wait' | 'ok' | 'hold'
+  score: number
+  headlineMent: string
+  lossConversion: string
+  reasons: Array<{ cardType: string; description: string }>
+  rawData: Record<string, unknown>
+  issueType?: string
+  sectorImpact?: string
+  impactTag?: string | null
+  priceSignalTag?: string | null
+}> {
+  const { stockName, stockCode, investAmount, priceData, dailyData, marketSignals, newsItems, dartData, simulation } = ctx
+
   const highRatio = priceData.week52High > 0
     ? Math.round((priceData.currentPrice / priceData.week52High) * 100)
-    : 0
+    : 50
+  const lowRatio = priceData.week52Low > 0 && priceData.week52High > priceData.week52Low
+    ? Math.round(((priceData.currentPrice - priceData.week52Low) / (priceData.week52High - priceData.week52Low)) * 100)
+    : 50
   const avgVol20 = dailyData.length > 1
     ? dailyData.slice(1).reduce((s, d) => s + d.volume, 0) / (dailyData.length - 1)
     : 0
   const todayVolMultiple = avgVol20 > 0 ? (dailyData[0]?.volume || 0) / avgVol20 : 1
-  const recent5Return = dailyData.slice(0, 5).reduce((s, d) => s + d.changeRate, 0)
+  const worstLoss3d = Math.round(investAmount * Math.abs(simulation.shortTerm.threeDayRange.worstCase) / 100)
+  const lossLabelCtx = getLossLabel(worstLoss3d)
 
-  const worstLoss3d = Math.round(investAmount * (simulation.shortTerm.threeDayRange.bestCase / 100))
+  // ── 예비 판정 (룰 기반 — LLM 앵커용) ──
+  const totalRuleScore = ctx.stockScore.score + ctx.marketScore.score
+  let prelimGrade: 'ban' | 'wait' | 'ok'
+  if (dartData.isAdminStock || dartData.isInvestmentWarning || dartData.isDelistingRisk) {
+    prelimGrade = 'ban'
+  } else if (totalRuleScore >= 35) {
+    prelimGrade = 'ban'
+  } else if (totalRuleScore >= 18) {
+    prelimGrade = 'wait'
+  } else {
+    prelimGrade = 'ok'
+  }
+  const PRELIM_LABELS: Record<string, string> = { ban: '절대금지', wait: '대기', ok: '괜찮아 보여' }
 
-  const newsHeadlines = ctx.newsSignals?.dataAvailable
-    ? '뉴스 데이터 있음'
-    : '뉴스 없음'
+  // ── DART 경보 섹션 ──
+  const hasDartWarning = dartData.isAdminStock || dartData.isInvestmentWarning || dartData.isDelistingRisk
+  const dartSection = dartData.available
+    ? hasDartWarning
+      ? `🚨 공식 경보 발령 중:
+${dartData.isAdminStock ? '  • 관리종목 지정됨 (상폐 위험 단계)' : ''}
+${dartData.isInvestmentWarning ? '  • 투자주의/경고/위험 발령됨' : ''}
+${dartData.isDelistingRisk ? '  • 상장폐지 예고/심사 중' : ''}
+  관련 공시: ${dartData.warnings.join(' / ')}`
+      : '공식 경보 없음 (최근 2년 관리종목/투자주의 없음)'
+    : 'DART 조회 실패 — API 키 미설정 또는 오류'
 
-  const prompt = `너는 30대 직장인이야.
-낮에는 회사 다니고 밤에는 토스·카카오페이로 주식 보는 MZ 고인물.
+  // ── 뉴스 섹션 ──
+  const newsSection = newsItems.length > 0
+    ? newsItems.map((n, i) => `  ${i + 1}. [${n.pubDate?.slice(0, 16) ?? ''}] ${n.title}\n     ${n.description}`).join('\n')
+    : '  뉴스 없음'
+
+  // ── 최근 10일 흐름 ──
+  const priceFlow = dailyData.slice(0, 10)
+    .map(d => `${d.changeRate > 0 ? '+' : ''}${d.changeRate.toFixed(1)}%`)
+    .join(' → ')
+  const negDays10 = dailyData.slice(0, 10).filter(d => d.changeRate < 0).length
+  const recent5Sum = dailyData.slice(0, 5).reduce((s, d) => s + d.changeRate, 0)
+
+  const prompt = `너는 한국 주식 리스크 분석 전문가이자 MZ 30대 직장인이야.
+낮에는 회사 다니고 밤에는 토스·카카오페이로 주식 보는 고인물.
 HLB 반토막, 카카오 존버 3년, 공모주 청약 줄섰다 꽝까지 다 경험했어.
-유튜브 주식 채널 즐겨찾기만 20개고, 주식 갤러리도 매일 들어가.
-지금 후배가 "${stockName} 이거 사도 돼?" 하고 카톡 보내왔어.
-말리고 싶은 마음 반, 어차피 살 거 아는 마음 반.
-직장인 특유의 자조적 유머로 현실을 직격해.
 
-## 종목 데이터
+지금 후배가 "${stockName} 이거 사도 돼?" 하고 카톡 보내왔어.
+아래 **모든 데이터를 종합해서** 판정해줘. 숫자 하나만 보지 말고 전체 맥락으로.
+
+━━━ 종목 기본 정보 ━━━
 - 종목: ${stockName} (${stockCode})
 - 현재가: ${priceData.currentPrice.toLocaleString()}원
-- 고점 대비 위치: ${highRatio}% (100%=고점, 낮을수록 바닥)
-- 거래량: 평소 대비 ${todayVolMultiple.toFixed(1)}배
-- 최근 5일 등락: ${recent5Return > 0 ? '+' : ''}${recent5Return.toFixed(1)}%
-- 시장 분위기 (공포탐욕): ${ctx.marketSignals.fearGreed ?? '데이터 없음'}/100
-- 관련 뉴스: ${newsHeadlines}
-- 판결: ${verdict.label} (위험점수 ${verdict.totalScore}/100)
-- 투자금: ${investAmount.toLocaleString()}원
-- 최악 손실 예상: ${worstLoss3d.toLocaleString()}원
+- 52주 고점 대비: ${highRatio}% (100%=역사적 고점, 낮으면 많이 빠진 상태)
+- 52주 범위 내 위치: ${lowRatio}% (0%=52주 최저점, 100%=52주 최고점)
+- PER: ${priceData.per <= 0 ? '적자기업 (지금 돈 못 버는 중)' : priceData.per.toFixed(1)}
+- PBR: ${priceData.pbr.toFixed(2)} (1 미만=장부가보다 싸게 팔림)
+- 시가총액: ${priceData.marketCap > 0 ? priceData.marketCap.toLocaleString() + '억원' : '조회 안됨'}
+- 오늘 거래량: 평소 대비 ${todayVolMultiple.toFixed(1)}배
 
-## 판결별 말투
-🤬 절대금지: 형이 직접 당한 것처럼 진심으로 말려. "아 이거 나 작년에 샀다가 반토막 났어. 진짜로." / "사지 마. 사면 나중에 나한테 욕해도 됨."
-😤 대기: 선배 톤으로 탐욕 참으라고. "3일만 참아. 딱 3일만." / "지금 들어가면 왜 이때 샀지 하면서 잠 못 잠."
-😎 인정: 쿨하게, 절대 몰빵 금지. "나쁘진 않네. 근데 월급 전부는 넣지 마." / "타이밍은 맞는 것 같아. -10% 되면 버틸 수 있어?"
-🫠 관망: 솔직하게. "이건 나도 모르겠다. 진짜로." / "이럴 땐 그냥 안 사는 게 답임."
+━━━ ⚠️ 거래소/감독원 공식 경보 [최우선 판단 근거] ━━━
+${dartSection}
 
-## 손실 치환 기준 (lossConversion용) — "날린다" 표현 절대 금지. 아래처럼 엉뚱하게.
-1~3만원: "편의점 야식 한 번이야" / "택시비 한 번인데"
-3~10만원: "치킨 한 마리인데" / "디즈니플러스 5개월치야"
-10~30만원: "제주도 편도야" / "제주도 왕복 두 번이야"
-30~70만원: "메타버스에서 집 살 수 있었어" / "한강뷰 원룸 한 달이야"
-70만원+: "꿈에서만 살 수 있는 금액이야" / "꿈에서 스테이크 먹는 수준이야"
+━━━ 최근 주가 흐름 (10일) ━━━
+${priceFlow}
+(최근 10일 중 하락일: ${negDays10}일 / 최근 5일 누적: ${recent5Sum > 0 ? '+' : ''}${recent5Sum.toFixed(1)}%)
 
-## 절대 금지
-- "사라", "매수해", "좋은 종목" 등 매수 추천 금지
-- 금융 보고서 톤, 딱딱한 문체 금지
-- 초성 축약어(ㅋㅋ, ㄹㅇ) 금지
-- PER, VIX, 52주, 이평선 등 전문용어 금지
-- 없는 용어 창작 금지
+━━━ 시장 환경 ━━━
+- VIX (공포지수): ${marketSignals.vix} (25↑ 불안정, 35↑ 공황)
+- 공포탐욕지수: ${marketSignals.fearGreed ?? '없음'}/100 (80↑ 극단탐욕, 20↓ 극단공포)
+- ${priceData.marketType} 지수 고점 대비: ${priceData.marketType === 'KOSDAQ' ? marketSignals.kosdaqDrawdown : marketSignals.kospiDrawdown}%
+- 미국 기준금리: ${marketSignals.fedRate}%
 
-## 응답 형식 (JSON만, 다른 텍스트 없이)
+━━━ 최근 뉴스 (${newsItems.length}건) ━━━
+${newsSection}
+
+━━━ 📊 예비 판정 (규칙 기반 자동 계산) ━━━
+종목 위험: ${ctx.stockScore.score}/40 ${JSON.stringify(ctx.stockScore.breakdown)}
+시장 위험: ${ctx.marketScore.score}/40
+→ 예비 판정: **${PRELIM_LABELS[prelimGrade]}(${prelimGrade})**
+
+이 예비 판정을 출발점으로 검토해. 뒤집으려면 구체적 근거 있어야 해.
+
+━━━ 판정 기준 ━━━
+🚨 ban(절대금지): 관리종목/투자주의/상장폐지, VIX 35+, 연속 하락 + 적자 + 소형주 복합, 부실 징후
+🤔 wait(대기): 시장 불안정, 고점 과열, 조정 가능성, 부정적 뉴스
+😎 ok(괜찮아 보여): 합리적 밸류, 안정 흐름, 관리 가능한 리스크
+🫠 hold(관망): KIS·뉴스·시장 데이터가 모두 없어서 아예 판단 불가한 경우에만. 데이터 있으면 절대 hold 금지.
+
+━━━ 말투 ━━━
+사기 전에 판단해주는 앱이야. 담담하게 툭 던지는 드립 한 줄.
+과장하지 말고, 반전이나 공감 포인트 있으면 더 좋아.
+
+등급별 방향:
+  ban  → 강하게 말리되 드립으로. 예: "이 버스 종점까지는 타면 안 됩니다" / "없어도 되는 돈이지만 이건 좀"
+  wait → 애매하게 뜯어말리는 드립. 예: "무릎인지 어깨인지 아직 아무도 몰라" / "좀 더 지켜봐야 알 것 같아요"
+  ok   → 쿨하게 허락. 예: "가즈아, 근데 조금만" / "간만에 뭔가 될 것 같은데"
+  hold → 모르겠다는 솔직한 드립. 예: "이건 나도 모르겠어" / "데이터가 말을 안 해줘"
+
+나쁜 예시 (절대 금지):
+  "지금 사면 기부 천사 등극" — 올드한 인터넷 유행어
+  "저 잘못 탄 것 같아요" — 이미 산 사람 표현, 앱 맥락과 안 맞음
+  "이 주식 대박각이다" — 뻔함
+  "사라/매수해" — 절대 금지
+
+손실 치환: 최악의 경우 손실 = ${lossLabelCtx.emoji} "${lossLabelCtx.text}" 수준이야.
+이걸 활용해서 판결 톤에 맞게 한 문장으로 만들어줘.
+  ban  예시: "잘못하면 ${lossLabelCtx.text} 날려" / "이거 샀다간 ${lossLabelCtx.text} 작별이야"
+  wait 예시: "지금 들어가면 ${lossLabelCtx.text} 날릴 수도 있어"
+  ok   예시: "잘 되면 ${lossLabelCtx.text} 정도는 건질 것 같아"
+꿈에서만 가능한 금액이면 "이거 날리면 ${lossLabelCtx.text}은 꿈에서나 살 수 있어" 같은 표현도 좋아.
+"날린다" 표현 써도 돼.
+
+절대 금지: "사라/매수해" 금지, 전문용어(PER/VIX/52주) 금지, 초성 축약어 금지
+
+━━━ 응답 형식 (JSON만, 다른 텍스트 없이) ━━━
 {
-  "headlineMent": "10~20자. 반말. MZ 주식 커뮤니티 말투. 예: '지금 사면 기부 천사 등극' / '3일만 참아 진짜로' / '나쁘지 않은데 몰빵은 금지'",
-  "lossConversion": "snarky 톤. '날린다' 표현 금지. 예: '제주도 왕복 두 번이야 ㅋ' / '메타버스에서 집 살 수 있었는데' / '꿈에서만 살 수 있는 금액이야'",
-  "issueType": "임상실패 | 수주 | 실적 | 거시경제 | 루머 | 기타 중 하나",
-  "sectorImpact": "긍정 | 부정 | 중립 중 하나",
-  "impactTag": "섹터+방향 한 줄 (예: '바이오 부정', '반도체 긍정'). 없으면 null",
-  "priceSignalTag": "가격 이상 신호 한 줄 (예: '3일 연속 하락', '거래량 급등'). 없으면 null",
+  "grade": "ban | wait | ok | hold",
+  "score": 0~100 (높을수록 위험),
+  "headlineMent": "10~20자. 담담한 자조 드립. 툭 던지는 한 마디. 위 좋은 예시 스타일로.",
+  "lossConversion": "손실 치환 문장. 위 지시대로.",
+  "issueType": "임상실패 | 수주 | 실적 | 거시경제 | 루머 | 기타",
+  "sectorImpact": "긍정 | 부정 | 중립",
+  "impactTag": "섹터+방향 (예: '바이오 부정') 또는 null",
+  "priceSignalTag": "가격 신호 (예: '10일 연속 하락') 또는 null",
   "reasons": [
-    {
-      "cardType": "price | value | volume | market | news 중 하나",
-      "description": "2문장 이내. 완전 쉬운 말. 중학생도 이해 가능. 전문용어 절대 금지. 예: '지금 거의 제일 비쌀 때야. 더 오를 공간이 없어.' / '이 회사 돈 버는 속도로 따지면 투자금 돌려받는 데 50년 걸려.'"
-    }
+    {"cardType": "price | value | volume | market | news", "description": "중학생도 이해하는 2문장 이내. 전문용어 절대 금지."}
   ]
-}
-- reasons: 데이터 있는 항목만. price/value/volume/market은 데이터 있으면 포함, news는 뉴스 있을 때만.`
+}`
 
-  // rawData — 프론트 카드 룩업에 필요한 수치 모음
   const rawDataForResponse = {
-    highRatio: Math.round(priceData.week52High > 0
-      ? (priceData.currentPrice / priceData.week52High) * 100
-      : 50),
+    highRatio,
     per: priceData.per > 0 ? Math.round(priceData.per) : null,
     isDeficit: priceData.per <= 0,
     volMultiple: Math.round(todayVolMultiple * 10) / 10,
-    fearGreed: ctx.marketSignals.fearGreed ?? null,
+    fearGreed: marketSignals.fearGreed ?? null,
+  }
+
+  // fallback: LLM 실패 시 예비 판정 등급 그대로 사용 (hold 도망 방지)
+  const fallback = {
+    grade: prelimGrade,
+    score: totalRuleScore * 100 / 80,
+    headlineMent: prelimGrade === 'ban' ? '이 버스 종점까지는 타면 안 됩니다' : prelimGrade === 'wait' ? '무릎인지 어깨인지 아직 아무도 몰라' : '가즈아, 근데 조금만',
+    lossConversion: `${getLossLabel(worstLoss3d).emoji} ${getLossLabel(worstLoss3d).text}만큼이야`,
+    reasons: [{ cardType: 'price', description: `현재 고점 대비 ${highRatio}% 위치야.` }],
+    rawData: rawDataForResponse,
   }
 
   const text = await callLLM(prompt)
   const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
   const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) {
-    // LLM 응답 실패 시 기본값 반환 — 서비스 중단 방지
-    return {
-      headlineMent: `${verdict.label} — 지금은 아냐`,
-      lossConversion: `${getLossLabel(worstLoss3d).emoji} ${getLossLabel(worstLoss3d).text}만큼이야`,
-      reasons: [{ cardType: 'price', description: `고점 대비 ${highRatio}% 위치야. 지금 꽤 비쌀 때야.` }],
-      rawData: rawDataForResponse,
-    }
-  }
+  if (!jsonMatch) return fallback
 
   try {
     const parsed = JSON.parse(jsonMatch[0])
+    const validGrades = ['ban', 'wait', 'ok', 'hold']
+    if (!validGrades.includes(parsed.grade)) parsed.grade = 'hold'
     return { ...parsed, rawData: rawDataForResponse }
   } catch (_) {
-    return {
-      headlineMent: `${verdict.label} — 지금은 애매해`,
-      lossConversion: `${getLossLabel(worstLoss3d).emoji} ${getLossLabel(worstLoss3d).text}만큼이야`,
-      reasons: [],
-      rawData: rawDataForResponse,
-    }
+    return fallback
   }
 }
 

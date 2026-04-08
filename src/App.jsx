@@ -41,7 +41,7 @@ function AuthRoute({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="max-w-[640px] mx-auto w-full min-h-dvh">
+      <div className="w-full min-h-dvh" style={{ backgroundColor: '#ffffff' }}>
       <Routes>
         <Route
           path="/login"
@@ -51,14 +51,7 @@ export default function App() {
             </AuthRoute>
           }
         />
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <MainPage />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/" element={<MainPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

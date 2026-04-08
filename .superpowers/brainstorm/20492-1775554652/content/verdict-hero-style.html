@@ -1,0 +1,164 @@
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0f2f5; font-family: -apple-system, 'Apple SD Gothic Neo', sans-serif; }
+  h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; color: #111; }
+  .subtitle { font-size: 14px; color: #666; margin-bottom: 24px; }
+  .phones { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; padding: 0 12px 40px; }
+  .phone-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .phone-label { font-size: 13px; font-weight: 700; color: #333; }
+  .phone-sub { font-size: 12px; color: #888; text-align: center; max-width: 200px; }
+  .phone {
+    width: 230px; border-radius: 32px; overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.08);
+    cursor: pointer; border: 3px solid transparent;
+    transition: border-color 0.2s, transform 0.15s;
+    position: relative;
+  }
+  .phone:hover { transform: translateY(-3px); }
+  .phone.selected { border-color: #3182f6; }
+  .phone-overlay {
+    position: absolute; inset: 0; border-radius: 29px;
+    background: rgba(49,130,246,0.1);
+    display: none; align-items: center; justify-content: center;
+  }
+  .phone.selected .phone-overlay { display: flex; }
+  .phone-overlay span { font-size: 32px; }
+
+  /* 공통 */
+  .ctx-bar { display: flex; align-items: center; gap: 8px; padding: 16px 16px 10px; }
+  .ctx-logo { width: 34px; height: 34px; border-radius: 9px; background: #1428A0; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff; font-weight: 800; flex-shrink: 0; }
+  .ctx-name { font-size: 14px; font-weight: 700; color: #111; }
+  .ctx-meta { font-size: 11px; color: #888; margin-top: 1px; }
+
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; justify-content: center; }
+  .tag { font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 99px; white-space: nowrap; }
+  .tag-danger { background: rgba(240,68,82,0.12); color: #d63348; }
+  .tag-neutral { background: rgba(0,0,0,0.07); color: #555; }
+
+  .section-card { margin: 0 12px; border-radius: 18px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; }
+  .list-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-bottom: 0.5px solid rgba(0,0,0,0.05); }
+  .list-item:last-child { border-bottom: none; }
+  .list-emoji { font-size: 20px; line-height: 1.3; flex-shrink: 0; }
+  .list-nick { font-size: 13px; font-weight: 800; color: #111; margin-bottom: 2px; letter-spacing: -0.2px; }
+  .list-desc { font-size: 11px; color: #666; line-height: 1.5; }
+  .bottom-pad { height: 16px; }
+
+  /* ── 옵션 A: 현재 — 카드 ── */
+  .phoneA { background: #f2f4f6; }
+  .heroA {
+    margin: 0 12px 10px; border-radius: 22px; padding: 20px 16px 16px;
+    background: rgba(255,255,255,0.6);
+    backdrop-filter: blur(28px) saturate(180%);
+    box-shadow: inset 0 1.5px 0 rgba(255,255,255,0.9), 0 0 0 0.5px rgba(255,255,255,0.6), 0 6px 24px rgba(240,68,82,0.14);
+    text-align: center; position: relative; overflow: hidden;
+  }
+  .heroA::before { content: ''; position: absolute; top:0;left:0;right:0;height:50%; background: linear-gradient(180deg,rgba(255,255,255,0.45) 0%,rgba(255,255,255,0) 100%); }
+  .heroA-inner { position: relative; z-index: 1; }
+  .emoji-bubble { width: 54px; height: 54px; border-radius: 50%; background: rgba(240,68,82,0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 26px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.9); }
+  .hero-title { font-size: 18px; font-weight: 800; color: #111; margin-bottom: 4px; letter-spacing: -0.3px; }
+  .hero-ment { font-size: 12px; color: #555; margin-bottom: 5px; }
+  .hero-loss { font-size: 13px; font-weight: 700; color: #f04452; }
+
+  /* ── 옵션 B: 카드 없음 — 풀섹션 ── */
+  .phoneB { background: linear-gradient(180deg, rgba(240,68,82,0.18) 0%, rgba(240,68,82,0.05) 40%, #f2f4f6 55%); }
+  .heroB { padding: 20px 20px 16px; text-align: center; }
+  /* 이모지만 강조, 텍스트는 그냥 페이지 위에 떠 있는 느낌 */
+
+  /* ── 옵션 C: 카드 없음 — 이모지 크게, 텍스트 인라인 ── */
+  .phoneC { background: linear-gradient(180deg, rgba(240,68,82,0.15) 0%, rgba(240,68,82,0.04) 42%, #f2f4f6 58%); }
+  .heroC { padding: 24px 20px 16px; text-align: center; }
+  /* 이모지 더 크게, 타이틀 더 크게, 멘트를 인라인 이모지로 */
+</style>
+
+<h2>판결 히어로 — 카드 없이 어떻게 보여?</h2>
+<p class="subtitle">AI 판결 영역을 카드 박스 없이 표현하는 방법</p>
+
+<div class="phones">
+
+  <!-- 현재: 카드 있음 -->
+  <div class="phone-wrap">
+    <div class="phone phoneA" data-choice="a" onclick="toggleSelect(this)">
+      <div class="phone-overlay"><span>✓</span></div>
+      <div class="ctx-bar">
+        <div class="ctx-logo">삼</div>
+        <div><div class="ctx-name">삼성전자</div><div class="ctx-meta">5주 · 1,230,000원</div></div>
+      </div>
+      <div class="heroA">
+        <div class="heroA-inner">
+          <div class="emoji-bubble">🤬</div>
+          <div class="hero-title">호구 입장 1초 전</div>
+          <div class="hero-ment">지금 사면 기부 천사 등극</div>
+          <div class="hero-loss">치킨 5마리 날리고 싶나봐</div>
+          <div class="tags"><span class="tag tag-danger">💣 임상실패</span><span class="tag tag-neutral">📉 3일 연속 하락</span></div>
+        </div>
+      </div>
+      <div style="height:10px"></div>
+      <div class="section-card">
+        <div class="list-item"><div class="list-emoji">🗼</div><div><div class="list-nick">꼭대기야</div><div class="list-desc">1년 중 거의 가장 비쌀 때야</div></div></div>
+        <div class="list-item"><div class="list-emoji">💸</div><div><div class="list-nick">돈도 못 버는 회사</div><div class="list-desc">지금 적자 중이야</div></div></div>
+        <div class="list-item"><div class="list-emoji">🔥</div><div><div class="list-nick">뭔가 터졌나봐</div><div class="list-desc">평소보다 3배 넘게 거래 중이야</div></div></div>
+        <div class="list-item"><div class="list-emoji">📰</div><div><div class="list-nick">임상 실패 얘기 돌고 있어</div><div class="list-desc">최근 부정적인 소식이 많아</div></div></div>
+      </div>
+      <div class="bottom-pad"></div>
+    </div>
+    <div class="phone-label">현재 — 카드 있음</div>
+    <div class="phone-sub">둥근 카드에 블러 효과</div>
+  </div>
+
+  <!-- B: 카드 없음 — 배경 그라디언트 섹션 -->
+  <div class="phone-wrap">
+    <div class="phone phoneB" data-choice="b" onclick="toggleSelect(this)">
+      <div class="phone-overlay"><span>✓</span></div>
+      <div class="ctx-bar">
+        <div class="ctx-logo">삼</div>
+        <div><div class="ctx-name">삼성전자</div><div class="ctx-meta">5주 · 1,230,000원</div></div>
+      </div>
+      <div class="heroB">
+        <div style="font-size:48px;margin-bottom:12px;line-height:1">🤬</div>
+        <div style="font-size:20px;font-weight:900;color:#111;letter-spacing:-0.5px;margin-bottom:6px">호구 입장 1초 전</div>
+        <div style="font-size:13px;color:#444;margin-bottom:6px">지금 사면 기부 천사 등극</div>
+        <div style="font-size:14px;font-weight:700;color:#f04452;margin-bottom:12px">치킨 5마리 날리고 싶나봐</div>
+        <div class="tags"><span class="tag tag-danger">💣 임상실패</span><span class="tag tag-neutral">📉 3일 연속 하락</span></div>
+      </div>
+      <div style="height:10px"></div>
+      <div class="section-card">
+        <div class="list-item"><div class="list-emoji">🗼</div><div><div class="list-nick">꼭대기야</div><div class="list-desc">1년 중 거의 가장 비쌀 때야</div></div></div>
+        <div class="list-item"><div class="list-emoji">💸</div><div><div class="list-nick">돈도 못 버는 회사</div><div class="list-desc">지금 적자 중이야</div></div></div>
+        <div class="list-item"><div class="list-emoji">🔥</div><div><div class="list-nick">뭔가 터졌나봐</div><div class="list-desc">평소보다 3배 넘게 거래 중이야</div></div></div>
+        <div class="list-item"><div class="list-emoji">📰</div><div><div class="list-nick">임상 실패 얘기 돌고 있어</div><div class="list-desc">최근 부정적인 소식이 많아</div></div></div>
+      </div>
+      <div class="bottom-pad"></div>
+    </div>
+    <div class="phone-label">B — 카드 없이, 풀 배경</div>
+    <div class="phone-sub">등급 컬러가 페이지 배경으로<br>이모지 크게, 텍스트 자유롭게</div>
+  </div>
+
+  <!-- C: 카드 없음 — 이모지 + 텍스트 더 크게 -->
+  <div class="phone-wrap">
+    <div class="phone phoneC" data-choice="c" onclick="toggleSelect(this)">
+      <div class="phone-overlay"><span>✓</span></div>
+      <div class="ctx-bar">
+        <div class="ctx-logo">삼</div>
+        <div><div class="ctx-name">삼성전자</div><div class="ctx-meta">5주 · 1,230,000원</div></div>
+      </div>
+      <div class="heroC">
+        <div style="font-size:52px;margin-bottom:14px;line-height:1">🤬</div>
+        <div style="font-size:22px;font-weight:900;color:#111;letter-spacing:-0.6px;margin-bottom:8px;line-height:1.2">호구 입장<br>1초 전</div>
+        <!-- 멘트를 인라인 이모지 스타일로 -->
+        <div style="font-size:14px;font-weight:700;color:#f04452;margin-bottom:14px">치킨 5마리 날리고 싶나봐 🍗</div>
+        <div class="tags"><span class="tag tag-danger">💣 임상실패</span><span class="tag tag-neutral">📉 3일 연속 하락</span></div>
+      </div>
+      <div style="height:10px"></div>
+      <div class="section-card">
+        <div class="list-item"><div class="list-emoji">🗼</div><div><div class="list-nick">꼭대기야</div><div class="list-desc">1년 중 거의 가장 비쌀 때야</div></div></div>
+        <div class="list-item"><div class="list-emoji">💸</div><div><div class="list-nick">돈도 못 버는 회사</div><div class="list-desc">지금 적자 중이야</div></div></div>
+        <div class="list-item"><div class="list-emoji">🔥</div><div><div class="list-nick">뭔가 터졌나봐</div><div class="list-desc">평소보다 3배 넘게 거래 중이야</div></div></div>
+        <div class="list-item"><div class="list-emoji">📰</div><div><div class="list-nick">임상 실패 얘기 돌고 있어</div><div class="list-desc">최근 부정적인 소식이 많아</div></div></div>
+      </div>
+      <div class="bottom-pad"></div>
+    </div>
+    <div class="phone-label">C — 카드 없이, 타이포 강조</div>
+    <div class="phone-sub">이모지+타이틀 크게<br>JOMO 인라인 이모지 느낌</div>
+  </div>
+
+</div>

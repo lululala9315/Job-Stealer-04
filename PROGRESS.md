@@ -83,6 +83,92 @@
 - [x] Edge Function 신규 필드 (issueType, sectorImpact, impactTag, priceSignalTag)
 - [x] Edge Function 배포 완료
 
+## Phase 8: 로딩 화면 개선 ✅ 완료 (2026-04-07)
+
+- [x] **이모지 단순화**: thinking→disguised 10프레임 → thinking 4프레임만 유지
+- [x] **진행률 표시**: 가상 progress 시뮬레이션 (0→90%, 지수 감속, ~8초), 서브메시지에 `분석 중... X%` 인라인
+- [x] **세로 센터 보정**: `minHeight: 60vh` → `flex: 1 + paddingBottom: 52px` (헤더 높이 보정)
+- [x] **MainPage 패딩 제거**: LOADING step에서 `py-4` 제거 (`isLoadingStep` 조건 추가)
+
+---
+
+## Phase 7: UI 디테일 + 이슈 피드 안정화 ✅ 완료 (2026-04-07)
+
+### AmountInput UX 개선
+
+- [x] **레이아웃**: StockLogo(52px) → 종목명(20px secondary) → 타이틀 세로 스택으로 재구성
+- [x] **타이틀 위계 분리**: 종목명 `secondary` 색상, 질문 `primary` — 동일 굵기에서 색상으로 구분
+- [x] **타이틀 변경**: "몇 주 살 생각이야?" → "몇 주 구매할꺼야?"
+- [x] **서브타이틀 색상**: "현재가" / "수량" 레이블 `tertiary` → `secondary` (칩 텍스트와 통일)
+- [x] **현재가 금액**: 크기 22px → 26px, 자간 -1.2px, 색상 primary 유지
+- [x] **수량 텍스트**: 크기 22px → 26px
+- [x] **placeholder**: "몇 주 살 생각이야?" → "몇 주?"
+- [x] **예상금액 공간**: `minHeight` 제거 → 입력 시에만 렌더링 (빈 여백 제거)
+- [x] **stockCode 상태 추가** (MainPage): `priceOnly` 응답에서 `stockCode` 추출 → AmountInput에 전달하여 이름 검색 시에도 로고 표시
+
+### SearchScreen 히어로 개편
+
+- [x] **3D 이모지 이미지**: 🤑 텍스트 이모지 → 3D 그리마싱 페이스 PNG (`public/emoji/`)
+  - `grimacing-frontal.png` / `grimacing-right.png` / `grimacing-left.png`
+- [x] **스티커 스트로크**: `drop-shadow` 8방향 흰색 3px 아웃라인
+- [x] **Crossfade 애니메이션**: frontal→right→frontal→left 순환, A/B 레이어 교차 방식으로 깜빡임 제거
+  - frontal 900ms → right 400ms → frontal 700ms → left 400ms
+- [x] **이모지 크기**: 최종 56px
+- [x] **타이틀 크기**: 30px → 34px
+- [x] **이모지-타이틀 간격**: 8px
+- [x] **이슈 배너 `resolveStockName`**: stock_name이 6자리 코드일 때 로컬 stocks.json에서 이름 조회
+- [x] **이슈 배너 클릭**: stock_code + 종목명(displayName) 함께 전달
+
+### 이슈 피드 안정화
+
+- [x] **ETN/ETF 필터링** (issue-feed Edge Function): ETN, ETF, 레버리지, 인버스, 선물, 주요 ETF 브랜드 → 피드에서 제외 (check-stock 분석 불가 종목 차단)
+- [x] **캐시 시간 단축**: 2시간 → 30분 (이슈 갱신 주기 개선)
+- [x] **issue-feed 재배포** ✅
+
+---
+
+## Phase 6: 분석 고도화 + UX 보완 ✅ 완료 (2026-04-06)
+
+### 분석 엔진 개편 (Option B+C)
+
+**DART 공시 연동 (Option C)**
+- [x] `fetchDartData()` 추가 — DART API로 관리종목/투자주의/상장폐지 공시 2년치 조회
+- [x] 강제 ban 트리거: 관리종목·투자주의·상장폐지 감지 시 LLM 판정 무관 즉시 ban
+- [x] 환경변수 추가: `DART_API_KEY` (opendart.fss.or.kr 무료 등록)
+
+**LLM 직접 판정 (Option B)**
+- [x] `analyzeWithLLM()` 전면 교체 — 기존 룰 기반 등급 결정 → LLM이 모든 데이터 보고 직접 판정
+- [x] `fetchNewsItems()` 추가 — 키워드 카운팅 대신 뉴스 본문 실제 내용을 LLM에 전달
+- [x] 예비 판정 앵커 — 룰 기반 점수로 ban/wait/ok 먼저 계산 후 LLM에 전달 (hold 도망 방지)
+- [x] hold 극도 제한 — "데이터 완전 없을 때만, 데이터 있으면 hold 금지" 명시
+- [x] fallback도 예비 판정 등급 사용 (기존 hold 고정 → 룰 기반 등급)
+
+### AmountInput 전면 개편
+
+- [x] **플로우 변경**: 바텀시트 → 풀페이지 (AMOUNT step 추가)
+- [x] **단위 변경**: 만원 → 주(株) 단위
+- [x] **시스템 키보드**: 커스텀 키패드 제거, OS 키보드 사용 (투명 input 오버레이 기법)
+- [x] **프리셋 칩**: "1주/5주/10주/50주" 선택 → "+1주/+5주/+10주/+50주" 주수 누적 추가 방식
+- [x] **현재가 15초 폴링**: AMOUNT 페이지 체류 중 자동 갱신
+- [x] **Liquid Glass CTA**: `blur(28px) saturate(180%)` + 레이어드 섀도 + 스페큘러 하이라이트
+- [x] **라인 스타일 칩**: 글래스모피즘 → `border: 1px solid var(--color-border)` 아웃라인
+- [x] **타이틀**: "몇 주 살 생각이야?" 30px semibold
+- [x] **수량 표시**: `22px → 22px` (입력 없을 때 플레이스홀더), 입력값 + "주" 인라인
+
+### 미국 주식 차단
+
+- [x] `USStockSheet.jsx` 신규 — "🇺🇸 미국 주식은 열심히 준비 중이야" 바텀시트
+- [x] `isUSStock()` 감지 함수 — 영문 티커(AAPL 등) + 한글 미국 기업명 목록(애플/테슬라 등)
+- [x] API 호출 없이 즉시 시트 노출 (불필요한 Edge Function 호출 방지)
+
+### MainPage 플로우 개선
+
+- [x] `priceOnly` 결과 확인 후 AMOUNT 이동 (기존: 즉시 이동 → 종목 미존재 시 빈 페이지)
+- [x] `isSearching` 상태 추가 — 검색 중 스피너 + 중복 검색 방지
+- [x] 에러 시 검색 페이지 유지 + 에러 메시지 표시
+
+---
+
 ## Phase 5: 실시간 이슈 피드 + UX 개선 ✅ 완료 (2026-04-03)
 
 스펙: `docs/superpowers/specs/2026-04-03-phase5-issue-feed.md`

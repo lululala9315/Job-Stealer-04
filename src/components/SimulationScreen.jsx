@@ -87,14 +87,24 @@ export default function SimulationScreen({ simulation, investAmount, onReset }) 
         투자금 {(investAmount || 1_000_000).toLocaleString()}원 기준
       </p>
 
-      {/* 범위 밴드 차트 */}
+      {/* 범위 밴드 차트 — Liquid Glass */}
       <div style={{
-        backgroundColor: 'var(--color-bg-input)',
         borderRadius: 'var(--radius-xl)',
         padding: '20px',
         marginBottom: '6px',
         display: 'flex',
         justifyContent: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+        background: 'rgba(255,255,255,0.65)',
+        backdropFilter: 'blur(32px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(32px) saturate(180%)',
+        boxShadow: `
+          inset 0 1px 0 rgba(255,255,255,0.85),
+          0 0 0 0.5px rgba(0,0,0,0.04),
+          0 4px 20px rgba(0,0,0,0.07),
+          0 1px 4px rgba(0,0,0,0.04)
+        `,
       }}>
         <BandLineChart investAmount={investAmount || 1_000_000} projections={projections} />
       </div>
@@ -108,33 +118,57 @@ export default function SimulationScreen({ simulation, investAmount, onReset }) 
           const item = projections[key]
           if (!item) return null
           const isPositive = item.gain >= 0
+          const tintColor = isPositive ? 'rgba(49,130,246,0.07)' : 'rgba(240,68,82,0.07)'
+          const glowColor = isPositive
+            ? '0 8px 28px rgba(49,130,246,0.12), 0 2px 8px rgba(49,130,246,0.06)'
+            : '0 8px 28px rgba(240,68,82,0.12), 0 2px 8px rgba(240,68,82,0.06)'
           return (
             <div key={key} style={{
-              backgroundColor: 'var(--color-bg-card)',
               borderRadius: 'var(--radius-xl)',
               padding: '16px 20px',
-              border: '1px solid var(--color-border-light)',
-              boxShadow: 'var(--shadow-card)',
+              position: 'relative',
+              overflow: 'hidden',
               animation: `simIn 0.35s cubic-bezier(0.2, 0, 0, 1) ${i * 0.07}s both`,
+              /* 등급 색조 Liquid Glass */
+              background: tintColor,
+              backdropFilter: 'blur(28px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+              boxShadow: `
+                inset 0 1px 0 rgba(255,255,255,0.80),
+                0 0 0 0.5px rgba(255,255,255,0.35),
+                ${glowColor},
+                0 2px 8px rgba(0,0,0,0.05)
+              `,
             }}>
-              <p style={{ fontSize: '13px', color: 'var(--color-text-tertiary)', marginBottom: '8px' }}>
-                📅 {label}
-              </p>
-              <p style={{ fontSize: '18px', fontWeight: 800, color: isPositive ? 'var(--color-verdict-ok)' : 'var(--color-verdict-ban)' }}>
-                {item.emoji} {item.label}
-              </p>
+              {/* specular */}
+              <div style={{
+                position: 'absolute', top: 0, left: 0, right: 0, height: '52%',
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.36) 0%, rgba(255,255,255,0) 100%)',
+                borderRadius: 'inherit', pointerEvents: 'none', zIndex: 0,
+              }} />
+              {/* 콘텐츠 — specular 위 */}
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <p style={{ fontSize: '13px', color: 'var(--color-text-tertiary)', marginBottom: '8px' }}>
+                  📅 {label}
+                </p>
+                <p style={{ fontSize: '18px', fontWeight: 800, color: isPositive ? 'var(--color-verdict-ok)' : 'var(--color-verdict-ban)' }}>
+                  {item.emoji} {item.label}
+                </p>
+              </div>
             </div>
           )
         })}
       </div>
 
+      {/* 다시 검색 — Primary 검정 (시뮬레이션의 유일한 CTA) */}
       <button onClick={onReset} style={{
         width: '100%', height: 'var(--button-height-lg)',
-        backgroundColor: 'var(--color-accent)', color: '#ffffff',
+        backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)',
         border: 'none', borderRadius: 'var(--button-radius)',
         fontSize: '17px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
         transition: 'transform 0.1s cubic-bezier(0.2, 0, 0, 1)', willChange: 'transform',
         marginBottom: '16px',
+        letterSpacing: '-0.2px',
       }}
         onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.96)' }}
         onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)' }}

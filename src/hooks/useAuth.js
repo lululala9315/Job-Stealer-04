@@ -49,5 +49,12 @@ export function useAuth() {
     if (error) throw error
   }
 
-  return { user, loading, signIn, signOut }
+  /** 회원탈퇴 — DB의 delete_user() RPC 호출 후 세션 정리 */
+  const deleteUser = async () => {
+    const { error } = await supabase.rpc('delete_user')
+    if (error) throw error
+    await supabase.auth.signOut()
+  }
+
+  return { user, loading, signIn, signOut, deleteUser }
 }

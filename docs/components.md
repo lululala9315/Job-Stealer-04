@@ -9,14 +9,16 @@
 ```
 MainPage (step 관리)
   ├── SearchScreen     — SEARCH step
-  ├── AmountInput      — AMOUNT step
+  ├── AmountInput      — AMOUNT step (풀페이지)
   ├── LoadingScreen    — LOADING step
   ├── VerdictScreen    — VERDICT step
   └── SimulationScreen — SIMULATION step
 
 공통 컴포넌트:
   ├── Header           — 전체 화면 상단
-  └── HistoryList      — SEARCH step 하단
+  ├── HistoryList      — SEARCH step 하단
+  ├── LoginBottomSheet — 비로그인 상태 로그인 유도
+  └── USStockSheet     — 미국 주식 검색 시 준비중 안내
 ```
 
 ---
@@ -47,11 +49,12 @@ MainPage (step 관리)
 ### Props
 | prop | 타입 | 설명 |
 |------|------|------|
-| `onSearch` | `(query: string) => void` | 검색어 제출 시 콜백 |
+| `onSearch` | `(query: string, displayName?: string) => void` | 검색어 제출 시 콜백 |
+| `isSearching` | `boolean` | 검색 중 여부 — 중복 제출 방지 + 스피너 표시 |
 
 ### 주요 동작
 - 외부 wrapper: `minHeight: '100dvh'`, `justifyContent: 'center'` — 화면 세로 중앙 정렬
-- 타이틀: "어떤 주식에 눈 돌아갔어?"
+- 타이틀: "오늘은 어떤 종목에 물리고 싶어?"
 - **검색바 (토스 스타일)**:
   - 배경: `var(--color-bg-input)` 회색, 보더 없음, `border-radius: 14px`, `height: 52px`
   - 왼쪽: 돋보기 SVG 아이콘 (type="submit" 버튼) — 텍스트 입력 시 파란색으로 전환
@@ -61,29 +64,42 @@ MainPage (step 관리)
 - 인기종목: 마퀴 무한 스크롤 (삼성전자/SK하이닉스/HLB/카카오/현대차 하드코딩, StockLogo 칩)
   - 호버 시 일시정지 (`animation-play-state: paused`)
   - 칩 탭 시 종목 코드로 `onSearch` 호출
+- `isSearching` 동안 검색 버튼 → 스피너 SVG로 대체, 중복 제출 차단
 
 ---
 
 ## AmountInput
 
-**파일:** `src/components/AmountInput.jsx` (신규)
-**역할:** 투자 금액 입력 화면
+**파일:** `src/components/AmountInput.jsx`
+**역할:** 투자 수량 입력 화면 (풀페이지, AMOUNT step)
 
 ### Props
 | prop | 타입 | 설명 |
 |------|------|------|
-| `stockName` | `string` | 선택된 종목명 (서브 타이틀에 표시) |
-| `onSubmit` | `(amount: number) => void` | 금액 확인 시 콜백 (원 단위) |
+| `stockName` | `string` | 선택된 종목명 (상단 서브레이블에 표시) |
+| `stockCode` | `string` | 6자리 종목코드 — StockLogo 표시용, 없으면 빈 문자열 |
+| `stockPrice` | `number \| null` | 현재가 (원) — null이면 "조회 중..." 표시 + 입력 비활성 |
+| `onSubmit` | `(amount: number) => void` | 수량 확정 시 콜백 (주수 × 현재가 = 원 단위) |
 
 ### 주요 동작
-- 타이틀: "얼마나 넣을 생각이야?"
-- 서브: "{stockName}에"
-- `type="text"` + `inputmode="numeric"` — 네이티브 숫자 키패드 자동 노출
-- 입력값은 만원 단위, 자동으로 원 단위 변환 (100 입력 → 1,000,000원)
-- 실시간 표시: "= 1,000,000원" 회색 서브텍스트
-- 기본값: 100 (만원)
-- "건너뛰기" 링크 → `onSubmit(1000000)` (기본값 적용)
-- "다음" 버튼 → `onSubmit(입력값 * 10000)`
+- 타이틀: "몇 주 살 생각이야?" (30px, semibold)
+- 상단에 `StockLogo` + 종목명 서브레이블 표시
+- **단위: 주(株)** — 만원 단위 입력 방식 폐지
+- **시스템 키보드**: 투명 input(opacity:0) 오버레이 위에 표시용 텍스트 렌더링
+  - `inputMode="numeric"`, `pattern="[0-9]*"` — iOS/Android 숫자 키패드 자동 노출
+  - 최대 9999주 제한
+- 입력 표시: `{shares}주` 인라인 (22px, letterSpacing -0.8px)
+- 플레이스홀더: "몇 주 살 생각이야?" (입력값 없을 때)
+- 예상 금액: `예상 {formatWon(주수 × 현재가)}` — 18px, semibold, `--color-text-primary`
+- **현재가 카드**: 회색 bg(`#f4f6f8`) 카드 — `stockPrice` 없으면 "조회 중...", 있으면 `{n}원`
+  - 15초 주기 현재가 갱신은 **부모(MainPage)** 가 담당, `stockPrice` prop으로 전달
+- **프리셋 칩 (누적 방식)**: "+1주 / +5주 / +10주 / +50주" — 클릭 시 현재 주수에 덧셈
+  - 라인 스타일: `backgroundColor: transparent`, `border: 1px solid var(--color-border)`, radius 999px
+  - `stockPrice` null이면 opacity 0.4 + 비활성
+- **Liquid Glass CTA**: "AI한테 물어보기" 버튼
+  - 활성: `rgba(20,26,35,0.78)` + `blur(28px) saturate(180%)` + 스페큘러 하이라이트 + 레이어드 섀도
+  - 비활성: `rgba(220,224,228,0.55)` + `blur(12px)`
+  - `canSubmit`: 주수 > 0 AND stockPrice 존재 시 활성화
 
 ---
 
@@ -161,22 +177,40 @@ const GRADE_STYLES = {
 
 ## LoadingScreen
 
-**파일:** `src/components/LoadingScreen.jsx` (신규)
+**파일:** `src/components/LoadingScreen.jsx`
 **역할:** Edge Function 호출 중 로딩 화면
 
 ### Props
 없음
 
-### 로딩 메시지 (랜덤)
+### 레이아웃
+- `flex: 1` — MainPage `main` 컨테이너 전체 높이 차지
+- `paddingBottom: 52px` — 헤더(52px) 높이 보정, 뷰포트 기준 시각적 센터
+- MainPage: LOADING step에서 `py-4` 패딩 제거 (`isLoadingStep` 조건)
+
+### 이모지 애니메이션
+- thinking 4프레임 crossfade 반복 (disguised 제거)
+  - frontal(900ms) → right(450ms) → frontal(750ms) → left(450ms)
+- A/B 레이어 교차 방식 — 깜빡임 없음
+- 이미지: `public/emoji/thinking-{frontal|right|left}.png`
+
+### 로딩 메시지 (2.5초 순환)
 ```js
 const LOADING_MESSAGES = [
-  '충동 억제 AI 가동 중...',
-  'FOMO 방지벽 세우는 중...',
-  '팩트로 찬물 끼얹는 중...',
-  '잘못 탄 건 아닌지 확인 중...',
+  '충동이 올라오고 있어...',
+  '지금 이 종목 진짜 괜찮은지 보는 중...',
+  '팩트 몇 개 긁어오는 중...',
+  '뇌동매매 감지 레이더 켜는 중...',
   '무릎인지 어깨인지 파악 중...',
+  '지금 사면 어떻게 될지 시뮬 중...',
+  '남들도 다 사는지 확인 중...',
+  '이미 늦은 건지 확인 중...',
 ]
 ```
+
+### 진행률 시뮬레이션
+- 0% → 90% 지수 감속 곡선 (~8초), 150ms 인터벌
+- 서브메시지: `"분석 중... {X}%"` (tertiary, pulse 애니메이션)
 
 ---
 
@@ -203,18 +237,40 @@ const LOADING_MESSAGES = [
 
 ### MainPage (`src/pages/MainPage.jsx`)
 - 전체 플로우 step 관리
-- **STEPS**: `SEARCH → LOADING → VERDICT → SIMULATION` (AMOUNT는 바텀시트, 별도 step 없음)
-- 상태: `step`, `query`, `stockName`, `investAmount`, `result`, `error`, `showAmountSheet`
-- 금액 입력: `showAmountSheet` 바텀시트로 처리. 확인 시 Edge Function 호출
-- Edge Function 호출: `handleAmountSubmit`에서 바텀시트 닫은 후 즉시 호출
-- 호출 body: `{ query, userId, investAmount }`
+- **STEPS**: `SEARCH → AMOUNT → LOADING → VERDICT → SIMULATION` (AMOUNT는 풀페이지, 별도 step)
+- 상태: `step`, `query`, `stockName`, `investAmount`, `result`, `error`, `stockPrice`, `isSearching`, `showLoginSheet`, `showUSStockSheet`
+- **미국 주식 차단**: `isUSStock(query)` 감지 → `USStockSheet` 노출, API 호출 없음
+  - ASCII 영문 1~5자 티커 (AAPL, TSLA 등) 또는 한글 미국 기업명 (애플, 테슬라 등) 감지
+- **SEARCH 단계 (`handleSearch`)**: `priceOnly: true` 호출로 종목 유효성 확인 후 AMOUNT 이동
+  - 로그인 미확인 시 LoginBottomSheet 노출
+  - 검색 중 `isSearching: true` → 중복 검색 방지, SearchScreen 스피너
+  - 에러 시 SEARCH 화면 유지 + 에러 배너
+- **AMOUNT 단계**: 현재가 15초 폴링 (`useEffect` interval) — `stockPrice` 상태 갱신 후 AmountInput에 전달
+- **Edge Function 호출 (`handleAmountSubmit`)**: `{ query, userId, investAmount }` — LOADING step 전환 후 호출
 - 에러 처리: `data?.error` 먼저 체크 → `fnError` 체크 (fnError는 generic 메시지라 실 원인 묻힘)
-- priceOnly 사전 호출 없음 (KIS 토큰 1분 제한 충돌 방지)
 
 ### LoginPage (`src/pages/LoginPage.jsx`)
 - 카카오 / 구글 OAuth 버튼
 - `useAuth().signIn(provider)` 호출
 - 카카오: `scopes: 'profile_nickname'` (이메일 제외)
+
+---
+
+## USStockSheet
+
+**파일:** `src/components/USStockSheet.jsx`
+**역할:** 미국 주식 검색 시 노출되는 준비중 바텀시트
+
+### Props
+| prop | 타입 | 설명 |
+|------|------|------|
+| `onClose` | `() => void` | 시트 닫기 콜백 |
+
+### 주요 동작
+- 🇺🇸 이모지 + "미국 주식은 열심히 준비 중이야" 타이틀
+- 서브: "지금은 한국 종목만 분석할 수 있어."
+- CTA: "한국 종목 검색하기" → `onClose()`
+- `MainPage.isUSStock()` 감지 즉시 노출 — Edge Function 호출 없음
 
 ---
 

@@ -1,0 +1,315 @@
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0f2f5; font-family: -apple-system, 'Apple SD Gothic Neo', sans-serif; }
+  h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; color: #111; }
+  .subtitle { font-size: 14px; color: #666; margin-bottom: 24px; }
+
+  .phones { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; padding: 0 12px 40px; }
+
+  .phone-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .phone-label { font-size: 13px; font-weight: 700; color: #333; letter-spacing: -0.2px; }
+  .phone-sub { font-size: 12px; color: #888; text-align: center; max-width: 200px; }
+
+  .phone {
+    width: 220px;
+    min-height: 460px;
+    border-radius: 32px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.1);
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: border-color 0.2s, transform 0.15s;
+    position: relative;
+  }
+  .phone:hover { transform: translateY(-3px); }
+  .phone.selected { border-color: #3182f6; }
+
+  /* ── 공통 컨텍스트 바 ── */
+  .ctx-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 14px 10px;
+    background: #fff;
+  }
+  .ctx-logo {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: #1428A0; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: #fff; font-weight: 800; flex-shrink: 0;
+  }
+  .ctx-name { font-size: 14px; font-weight: 700; color: #111; line-height: 1.3; }
+  .ctx-meta { font-size: 11px; color: #888; line-height: 1.3; }
+
+  /* ── 옵션 A: 현재 카드 스택 ── */
+  .optA { background: #fff; }
+  .optA .hero {
+    margin: 10px 12px; border-radius: 20px; padding: 20px 16px;
+    background: rgba(240,68,82,0.09);
+    backdrop-filter: blur(20px);
+    text-align: center;
+  }
+  .optA .hero .emoji-bubble {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: rgba(240,68,82,0.12);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 10px; font-size: 26px;
+  }
+  .optA .hero .title { font-size: 18px; font-weight: 800; color: #111; margin-bottom: 4px; }
+  .optA .hero .ment { font-size: 12px; color: #555; margin-bottom: 6px; }
+  .optA .hero .loss { font-size: 13px; font-weight: 700; color: #f04452; }
+  .optA .cards { padding: 0 12px; display: flex; flex-direction: column; gap: 8px; }
+  .optA .card {
+    border-radius: 14px; padding: 12px;
+    background: rgba(255,255,255,0.8);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 0 0 0.5px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .optA .card .ct { font-size: 10px; color: #aaa; font-weight: 600; margin-bottom: 2px; }
+  .optA .card .cn { font-size: 14px; font-weight: 800; color: #111; margin-bottom: 3px; }
+  .optA .card .cd { font-size: 11px; color: #666; line-height: 1.5; }
+
+  /* ── 옵션 B: JOMO 리스트형 ── */
+  .optB { background: #f2f4f6; }
+  .optB .hero {
+    margin: 10px 12px; border-radius: 22px; padding: 22px 16px 20px;
+    background: linear-gradient(145deg, rgba(240,68,82,0.13) 0%, rgba(240,68,82,0.04) 100%);
+    box-shadow: inset 0 1.5px 0 rgba(255,255,255,0.8), 0 0 0 0.5px rgba(255,255,255,0.5), 0 8px 28px rgba(240,68,82,0.15);
+    text-align: center;
+  }
+  .optB .hero .emoji-bubble {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: rgba(240,68,82,0.1);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 10px; font-size: 26px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 12px rgba(240,68,82,0.15);
+  }
+  .optB .hero .title { font-size: 18px; font-weight: 800; color: #111; margin-bottom: 4px; }
+  .optB .hero .ment { font-size: 12px; color: #555; margin-bottom: 6px; }
+  .optB .hero .loss { font-size: 13px; font-weight: 700; color: #f04452; }
+
+  .optB .section-card {
+    margin: 8px 12px 0; border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    overflow: hidden;
+  }
+  .optB .list-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 11px 14px;
+    border-bottom: 0.5px solid rgba(0,0,0,0.05);
+  }
+  .optB .list-item:last-child { border-bottom: none; }
+  .optB .list-emoji { font-size: 18px; line-height: 1.4; flex-shrink: 0; }
+  .optB .list-right { flex: 1; }
+  .optB .list-nick { font-size: 13px; font-weight: 800; color: #111; margin-bottom: 2px; }
+  .optB .list-desc { font-size: 11px; color: #666; line-height: 1.5; }
+
+  /* ── 옵션 C: 풀 배경 Liquid Glass ── */
+  .optC {
+    background: linear-gradient(180deg, rgba(240,68,82,0.22) 0%, rgba(240,68,82,0.04) 38%, #f5f5f7 60%);
+  }
+  .optC .hero {
+    margin: 10px 12px; border-radius: 22px; padding: 22px 16px 20px;
+    background: rgba(255,255,255,0.28);
+    backdrop-filter: blur(40px) saturate(200%);
+    -webkit-backdrop-filter: blur(40px) saturate(200%);
+    box-shadow: inset 0 1.5px 0 rgba(255,255,255,0.85), 0 0 0 0.5px rgba(255,255,255,0.6), 0 8px 32px rgba(240,68,82,0.2);
+    text-align: center;
+  }
+  .optC .hero .emoji-bubble {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: rgba(255,255,255,0.35);
+    backdrop-filter: blur(20px);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 10px; font-size: 26px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 16px rgba(0,0,0,0.1);
+  }
+  .optC .hero .title { font-size: 18px; font-weight: 800; color: #111; margin-bottom: 4px; }
+  .optC .hero .ment { font-size: 12px; color: #444; margin-bottom: 6px; }
+  .optC .hero .loss { font-size: 13px; font-weight: 700; color: #e8210a; }
+
+  .optC .tags { display: flex; gap: 6px; padding: 6px 12px 0; flex-wrap: wrap; }
+  .optC .tag {
+    font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 99px;
+    background: rgba(240,68,82,0.1); color: #e8210a;
+  }
+
+  .optC .section-card {
+    margin: 8px 12px 0; border-radius: 18px;
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(24px) saturate(160%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 0 0 0.5px rgba(0,0,0,0.04), 0 2px 12px rgba(0,0,0,0.05);
+    overflow: hidden;
+  }
+  .optC .list-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 11px 14px;
+    border-bottom: 0.5px solid rgba(0,0,0,0.05);
+  }
+  .optC .list-item:last-child { border-bottom: none; }
+  .optC .list-emoji { font-size: 18px; line-height: 1.4; flex-shrink: 0; }
+  .optC .list-right { flex: 1; }
+  .optC .list-nick { font-size: 13px; font-weight: 800; color: #111; margin-bottom: 2px; }
+  .optC .list-desc { font-size: 11px; color: #555; line-height: 1.5; }
+
+  /* 선택 오버레이 */
+  .phone-overlay {
+    position: absolute; inset: 0; border-radius: 29px;
+    background: rgba(49,130,246,0.12);
+    display: none; align-items: center; justify-content: center;
+  }
+  .phone.selected .phone-overlay { display: flex; }
+  .phone-overlay span { font-size: 32px; }
+</style>
+
+<h2>판결 화면 — 어떤 구조가 맞아?</h2>
+<p class="subtitle">이유 섹션 표현 방식 + 배경 처리 3가지 방향. 클릭해서 선택.</p>
+
+<div class="phones">
+
+  <!-- 옵션 A: 현재 방식 (흰 배경 + 카드 스택) -->
+  <div class="phone-wrap">
+    <div class="phone optA" data-choice="a" onclick="toggleSelect(this)">
+      <div class="phone-overlay"><span>✓</span></div>
+      <div class="ctx-bar">
+        <div class="ctx-logo">삼</div>
+        <div>
+          <div class="ctx-name">삼성전자</div>
+          <div class="ctx-meta">005930</div>
+        </div>
+      </div>
+      <div class="hero">
+        <div class="emoji-bubble">🤬</div>
+        <div class="title">호구 입장 1초 전</div>
+        <div class="ment">지금 사면 기부 천사 등극</div>
+        <div class="loss">치킨 5마리 날리고 싶나봐</div>
+      </div>
+      <div style="height:8px"></div>
+      <div class="cards">
+        <div class="card">
+          <div class="ct">지금 가격이 어디야?</div>
+          <div class="cn">🗼 꼭대기야</div>
+          <div class="cd">1년 중 거의 가장 비쌀 때야</div>
+        </div>
+        <div class="card">
+          <div class="ct">이 회사 제값이야?</div>
+          <div class="cn">💸 돈도 못 버는 회사</div>
+          <div class="cd">지금 적자 중이라 가치 판단이 어려워</div>
+        </div>
+        <div class="card">
+          <div class="ct">오늘 얼마나 사고팔아?</div>
+          <div class="cn">🔥 뭔가 터졌나봐</div>
+          <div class="cd">평소보다 3배 넘게 거래 중이야</div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">A — 현재 방식</div>
+    <div class="phone-sub">흰 배경 + 카드 스택<br>각 카드 독립적</div>
+  </div>
+
+  <!-- 옵션 B: JOMO 리스트 (회색 배경 + 흰 섹션카드) -->
+  <div class="phone-wrap">
+    <div class="phone optB" data-choice="b" onclick="toggleSelect(this)">
+      <div class="phone-overlay"><span>✓</span></div>
+      <div class="ctx-bar" style="background:#f2f4f6">
+        <div class="ctx-logo">삼</div>
+        <div>
+          <div class="ctx-name">삼성전자</div>
+          <div class="ctx-meta">5주 · 1,230,000원</div>
+        </div>
+      </div>
+      <div class="hero">
+        <div class="emoji-bubble">🤬</div>
+        <div class="title">호구 입장 1초 전</div>
+        <div class="ment">지금 사면 기부 천사 등극</div>
+        <div class="loss">치킨 5마리 날리고 싶나봐</div>
+      </div>
+      <div class="section-card">
+        <div class="list-item">
+          <div class="list-emoji">🗼</div>
+          <div class="list-right">
+            <div class="list-nick">꼭대기야</div>
+            <div class="list-desc">1년 중 거의 가장 비쌀 때야</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="list-emoji">💸</div>
+          <div class="list-right">
+            <div class="list-nick">돈도 못 버는 회사</div>
+            <div class="list-desc">지금 적자 중이라 가치 판단 어려워</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="list-emoji">🔥</div>
+          <div class="list-right">
+            <div class="list-nick">뭔가 터졌나봐</div>
+            <div class="list-desc">평소보다 3배 넘게 거래 중이야</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="list-emoji">📰</div>
+          <div class="list-right">
+            <div class="list-nick">임상 실패 소식 돌고 있어</div>
+            <div class="list-desc">최근 부정적인 얘기가 많이 나와</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">B — JOMO 리스트</div>
+    <div class="phone-sub">회색 배경 + 흰 리스트 카드<br>수량/금액 컨텍스트 추가</div>
+  </div>
+
+  <!-- 옵션 C: 풀 배경 Liquid Glass -->
+  <div class="phone-wrap">
+    <div class="phone optC" data-choice="c" onclick="toggleSelect(this)">
+      <div class="phone-overlay"><span>✓</span></div>
+      <div class="ctx-bar" style="background:transparent; padding-top:16px">
+        <div class="ctx-logo">삼</div>
+        <div>
+          <div class="ctx-name">삼성전자</div>
+          <div class="ctx-meta">5주 · 1,230,000원</div>
+        </div>
+      </div>
+      <div class="hero">
+        <div class="emoji-bubble">🤬</div>
+        <div class="title">호구 입장 1초 전</div>
+        <div class="ment">지금 사면 기부 천사 등극</div>
+        <div class="loss">치킨 5마리 날리고 싶나봐</div>
+      </div>
+      <div class="tags">
+        <span class="tag">💣 임상실패</span>
+        <span class="tag">📉 3일 연속 하락</span>
+      </div>
+      <div class="section-card">
+        <div class="list-item">
+          <div class="list-emoji">🗼</div>
+          <div class="list-right">
+            <div class="list-nick">꼭대기야</div>
+            <div class="list-desc">1년 중 거의 가장 비쌀 때야</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="list-emoji">💸</div>
+          <div class="list-right">
+            <div class="list-nick">돈도 못 버는 회사</div>
+            <div class="list-desc">지금 적자 중이라 가치 판단 어려워</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="list-emoji">🔥</div>
+          <div class="list-right">
+            <div class="list-nick">뭔가 터졌나봐</div>
+            <div class="list-desc">평소보다 3배 넘게 거래 중이야</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="list-emoji">📰</div>
+          <div class="list-right">
+            <div class="list-nick">임상 실패 소식 돌고 있어</div>
+            <div class="list-desc">최근 부정적인 얘기가 많이 나와</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">C — 풀 배경 Liquid Glass</div>
+    <div class="phone-sub">등급 컬러 그라디언트 배경<br>Liquid Glass 효과 극대화</div>
+  </div>
+
+</div>

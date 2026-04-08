@@ -113,6 +113,9 @@ async function fetchVolumeRankStocks(token: string): Promise<VolumeRankItem[]> {
 
   const items: Array<Record<string, string>> = data.output || []
 
+  // ETN/ETF/레버리지/인버스는 check-stock 분석 불가 → 필터링
+  const UNSUPPORTED = ['ETN', 'ETF', '레버리지', '인버스', '선물', 'KODEX', 'TIGER', 'KBSTAR', 'ARIRANG', 'HANARO']
+
   return items
     .map(item => ({
       stock_code: item.mksc_shrn_iscd,
@@ -120,7 +123,10 @@ async function fetchVolumeRankStocks(token: string): Promise<VolumeRankItem[]> {
       price_change: parseFloat(item.prdy_ctrt || '0'),
       vol_ratio: parseFloat(item.vol_inrt || '0'),
     }))
-    .filter(item => item.vol_ratio >= 200 || Math.abs(item.price_change) >= 3)
+    .filter(item =>
+      !UNSUPPORTED.some(kw => item.stock_name?.includes(kw)) &&
+      (item.vol_ratio >= 200 || Math.abs(item.price_change) >= 3)
+    )
     .slice(0, 5)
 }
 
@@ -267,7 +273,7 @@ Deno.serve(async (req) => {
     }
 
     // 5. DB 저장 (기존 만료 데이터 삭제 후 INSERT)
-    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString()
     await db.from('issue_feed').delete().lt('expires_at', new Date().toISOString())
     await db.from('issue_feed').insert(
       issues.map(item => ({ ...item, expires_at: expiresAt }))

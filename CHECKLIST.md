@@ -1,7 +1,7 @@
 # stockcheck 리빌드 체크리스트
 
-> 최종 업데이트: 2026-04-03 | 상태: Phase 5 완료, 배포 완료
-> 설계 스펙: `docs/superpowers/specs/2026-04-03-phase5-issue-feed.md`
+> 최종 업데이트: 2026-04-07 | 상태: Phase 7 완료, 디자인 방향 재정립 중
+> 설계 스펙: `docs/superpowers/specs/2026-04-01-verdict-service-redesign.md`
 > 배포 URL: https://stockcheck-pi.vercel.app
 
 ---
@@ -15,7 +15,9 @@
 - [x] 데이터 소스 확정 — KIS API + assetx2 API + 네이버 뉴스 검색 API
 - [x] 시뮬레이션 방식 확정 — 과거 수익률 기반 단일 예측 (5/10/20년), 치환 메인
 - [x] 투자금 입력 방식 확정 — 유저 입력 (기본값 100만원, 만원 단위)
-- [x] 디자인 방향 확정 — 토스 플랫 + 판결 영역 iOS 글래스모피즘 + 스티커 이모지
+- [x] 디자인 방향 확정 → **iOS Liquid Glass로 재정립 (2026-04-07)**
+  - 기존: 토스 플랫 + 판결 영역 iOS 글래스모피즘 + 스티커 이모지
+  - 변경: iOS 26 스타일 Liquid Glass — deeper blur, specular highlight, layered shadow, "wet glass" 질감
 - [x] 제거 기능 확정 — 체크리스트, Swiper, 가상매수, 카카오 공유
 - [x] AI 모델 확정 — Gemini API (추후 Claude 교체 대비 모듈화)
 - [x] 버튼명 결정 보류 — "그래도 사면?" (추후 확정)
@@ -26,24 +28,27 @@
 
 ## 2단계: 디자인
 
-### 디자인 토큰
-- [x] 글래스모피즘 CSS 변수 `src/index.css`에 추가
-  - `--glass-bg`, `--glass-border`, `--glass-blur`, `--glass-shadow`
-- [x] 판결 등급 색상 토큰 추가 (`--color-verdict-ban/wait/ok/hold` + glow + glass)
-- [x] 치환 이모지 블리딩 색상 토큰 추가 (🍗☕🚗💻🎧✈️)
-- [x] 스티커 이모지 CSS 추가 (`text-shadow` + `drop-shadow` + `emojiFloat` 키프레임)
-- [x] 글래스 유틸 클래스 `.glass-card` 추가
-- [x] `questionIn` 진입 애니메이션 기존 유지 확인
+### 디자인 토큰 (현재 상태)
+- [x] 판결 등급 색상 토큰 (`--color-verdict-ban/wait/ok/hold` + glow + glass)
+- [x] 치환 이모지 블리딩 색상 토큰 (🍗☕🚗💻🎧✈️)
+- [x] 스티커 이모지 CSS (`text-shadow` + `drop-shadow` + `emojiFloat` 키프레임)
+- [x] 기존 글래스모피즘 CSS 변수 (`--glass-bg`, `--glass-border`, `--glass-blur`, `--glass-shadow`)
+- [x] Liquid Glass CTA 구현 (AmountInput) — `blur(28px) saturate(180%)` + 레이어드 섀도 + 스페큘러 하이라이트
+- [ ] **iOS Liquid Glass 디자인 토큰 전면 재정의 (Phase 8)**
+  - [ ] `--liquid-blur`: 40px+ (기존 glassmorphism보다 훨씬 깊은 블러)
+  - [ ] `--liquid-specular`: 상단 흰색 하이라이트 레이어
+  - [ ] `--liquid-shadow`: 3레이어 그림자 시스템
+  - [ ] `--liquid-tint`: 반투명 색조 (각 등급별)
+  - [ ] `--liquid-border`: 내부 발광 테두리
 
 ### 화면별 디자인 검토
-- [ ] **검색 화면** — "어떤 주식에 눈 돌아갔어?" 타이틀 + 검색창 + 인기종목 칩 레이아웃
-- [ ] **금액 입력 화면** — 타이틀 + 인풋 + 만원 단위 표시 + 건너뛰기 링크
-- [ ] **로딩 화면** — 스피너 + 로딩 메시지
-- [ ] **판결 결과 화면** — 글래스 히어로 + 스티커 이모지 + 치환 텍스트 + 근거 + CTA
-- [ ] **시뮬레이션 화면** — 치환 메인 + 금액 서브 + SVG 라인 차트
+- [x] **검색 화면** — "오늘은 어떤 종목에 물리고 싶어?" + 3D 그리마싱 이모지 + 검색창 + 이슈 배너 + 인기종목 마퀴 ✅ (Phase 7)
+- [x] **금액 입력 화면** — 풀페이지, StockLogo + 종목명 + 타이틀 세로 스택, 주 단위, Liquid Glass CTA ✅ (Phase 6~7)
+- [x] **로딩 화면** — thinking 이모지 4프레임 + 진행률 시뮬레이션(분석 중...X%) + 세로 센터 보정 ✅ (Phase 8)
+- [ ] **판결 결과 화면** — iOS Liquid Glass 히어로 재작업 필요 (Phase 8)
+- [ ] **시뮬레이션 화면** — iOS Liquid Glass 적용 필요 (Phase 8)
 - [ ] **히스토리 목록** — 판결 이모지 + 종목명 + 한줄 멘트 + 날짜
 - [ ] **절대금지 재확인 모달** — "그래도 볼 거야? 진짜?" 레이아웃
-- [ ] **빈 히스토리 상태** — 첫 사용 유도 카피
 
 ### UX 세부사항
 - [ ] 인기종목 칩 최대 5개 제한 확인
@@ -143,6 +148,65 @@
 **새 응답 스키마로 DB 저장**
 - [ ] `check_history` 저장 시 `invest_amount`, `verdict_grade`, `verdict_score` 추가
 - [ ] Mock 모드 새 스키마로 업데이트 (API 키 없이 개발 테스트용)
+
+### Phase 6 — 분석 고도화 + UX 보완 ✅ 완료 (2026-04-06)
+
+**DART 공시 연동**
+- [x] `fetchDartData(stockCode)` — DART API corp_code 조회 + 관리종목/투자주의/상장폐지 공시 2년치
+- [x] 강제 ban 트리거: DART 위험 공시 감지 시 LLM 판정 무관 즉시 ban
+- [x] `DART_API_KEY` 환경변수 추가 (Supabase Secrets 등록 필요)
+
+**LLM 직접 판정 전환**
+- [x] `analyzeWithLLM()` 전면 교체 — LLM이 ban/wait/ok/hold 직접 결정
+- [x] `fetchNewsItems()` 추가 — 실제 기사 제목/본문을 LLM에 전달 (키워드 카운팅 대체)
+- [x] 예비판정 앵커 — 룰 기반 점수(prelimGrade) LLM에 전달, hold 극도 제한
+- [x] fallback: LLM 실패 시 prelimGrade 사용 (기존 hold 고정 폐지)
+
+**AmountInput 전면 개편**
+- [x] 플로우: 바텀시트 → 풀페이지 (AMOUNT step 별도)
+- [x] 단위: 만원 → 주(株)
+- [x] 시스템 키보드 (투명 input 오버레이 기법)
+- [x] 프리셋 칩: "+1주/+5주/+10주/+50주" 누적 방식 + 라인 스타일
+- [x] 현재가 15초 폴링 (AMOUNT 체류 중 자동 갱신)
+- [x] Liquid Glass CTA: `blur(28px) saturate(180%)` + 레이어드 섀도
+
+**미국 주식 차단**
+- [x] `USStockSheet.jsx` 신규 — "🇺🇸 미국 주식은 열심히 준비 중이야" 바텀시트
+- [x] `isUSStock()` 감지 함수 — 영문 티커 + 한글 미국 기업명 목록
+- [x] API 호출 없이 즉시 시트 노출
+
+**MainPage 플로우 개선**
+- [x] `priceOnly` 결과 확인 후 AMOUNT 이동 (종목 미존재 시 빈 페이지 방지)
+- [x] `isSearching` 상태 — 검색 중 스피너 + 중복 검색 방지
+- [x] 에러 시 검색 페이지 유지 + 에러 메시지 표시
+
+### Phase 7 — UI 디테일 + 이슈 피드 안정화 ✅ 완료 (2026-04-07)
+
+**SearchScreen 히어로 개편**
+- [x] 3D 그리마싱 이모지 PNG 교체 (`public/emoji/grimacing-*.png` 3종)
+- [x] A/B crossfade 애니메이션 — frontal(900ms)→right(400ms)→frontal(700ms)→left(400ms) 순환, 깜빡임 없음
+- [x] 이모지 56px, 타이틀 34px, 이모지-타이틀 간격 8px
+- [x] 드롭섀도 스트로크 적용 (8방향 흰색 3px 아웃라인)
+
+**AmountInput UX 개선**
+- [x] StockLogo(52px) → 종목명(20px secondary) → 타이틀 세로 스택
+- [x] 현재가 금액 26px / 자간 -1.2px / primary 색상
+- [x] 수량 텍스트 26px
+- [x] 현재가/수량 서브타이틀 secondary 색상
+- [x] 타이틀 "몇 주 구매할꺼야?", placeholder "몇 주?"
+- [x] 예상금액 conditional render (shares > 0일 때만, minHeight 제거)
+
+**MainPage stockCode 상태 추가**
+- [x] `stockCode` 상태 추가 — priceOnly 응답에서 추출
+- [x] AmountInput에 `stockCode` 전달 → 이름 검색 시에도 로고 정상 표시
+
+**이슈 피드 안정화**
+- [x] ETN/ETF/레버리지/인버스/선물/주요 ETF 브랜드 필터링 (issue-feed Edge Function)
+- [x] 캐시 2시간 → 30분으로 단축
+- [x] `resolveStockName()` — stock_name이 6자리 코드이면 stocks.json에서 이름 조회
+- [x] 이슈 배너 클릭 시 stock_code + displayName 함께 전달
+- [x] 이슈 배너에서 StockLogo 제거
+- [x] issue-feed 재배포 ✅
 
 ### Phase 4 — UX 전면 리디자인 ✅ 완료 (2026-04-03)
 
@@ -294,18 +358,87 @@
 
 ## 5단계: 배포
 
-- [ ] Supabase Secrets 등록 확인
-  - [ ] `KIS_APP_KEY`, `KIS_APP_SECRET`
-  - [ ] `GEMINI_API_KEY`
-  - [ ] `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`
-- [ ] Edge Function 배포
+- [x] Supabase Secrets 등록 확인
+  - [x] `KIS_APP_KEY`, `KIS_APP_SECRET`
+  - [x] `ANTHROPIC_API_KEY` (GEMINI_API_KEY 대체 — Claude Haiku 사용)
+  - [x] `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`
+- [x] Edge Function 배포 (`check-stock`, `issue-feed`)
   ```bash
   npx supabase functions deploy check-stock --no-verify-jwt --project-ref nceekggewxufjqythenq
+  npx supabase functions deploy issue-feed --no-verify-jwt --project-ref nceekggewxufjqythenq
   ```
-- [ ] Vercel 환경변수 확인 (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`)
-- [ ] Vercel 재배포 후 https://stockcheck-pi.vercel.app 정상 동작 확인
+- [x] Vercel 환경변수 확인 (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`)
+- [x] Vercel 배포 완료 — https://stockcheck-pi.vercel.app
 - [ ] 카카오 OAuth redirect URI 확인 (Vercel 도메인 등록)
 - [ ] Google OAuth redirect URI 확인
+
+---
+
+## Phase 8: iOS Liquid Glass 디자인 전면 적용 (예정)
+
+### 디자인 방향 정립
+- [ ] iOS Liquid Glass 디자인 토큰 정의 (`src/index.css`)
+  - [ ] `--liquid-blur`: 40px+ (기존 glassmorphism 20px 대비 2배+)
+  - [ ] `--liquid-specular`: 상단 흰색 반사광 레이어
+  - [ ] `--liquid-shadow-1/2/3`: 3단 그림자 시스템 (ambient/cast/glow)
+  - [ ] `--liquid-tint-ban/wait/ok/hold`: 등급별 색조
+  - [ ] `--liquid-border`: 내부 발광 테두리 (inset box-shadow)
+- [ ] 기존 `.glass-card` → `.liquid-glass` 유틸 클래스 전환
+- [ ] 레퍼런스: iOS 26 Control Center, Dynamic Island, Sheet 컴포넌트 스타일
+
+### 컴포넌트 적용
+- [ ] **VerdictScreen 히어로 카드** — 가장 핵심, 판결 등급별 Liquid Glass 글로우
+- [ ] **VerdictScreen 이유 카드** — 서브 Liquid Glass (히어로보다 subtle)
+- [ ] **SimulationScreen 기간 카드** — 3개월/6개월/1년 각 카드
+- [ ] **AmountInput CTA 버튼** — 이미 Liquid Glass 적용 (재검토)
+- [ ] `src/index.css` 기존 glassmorphism 변수 정리 (Liquid Glass로 교체)
+
+## Phase 6(인증): 인증 UX 개선 + 디자인 디벨롭 (2026-04-04~05)
+
+### 인증 UX 개선 ✅ 완료
+- [x] `ProtectedRoute` 제거 — 비로그인도 SearchScreen 진입 가능
+- [x] `LoginBottomSheet.jsx` 신규 — 검색 시도 시 로그인 유도 바텀시트
+- [x] `useAuth.js` — `deleteUser()` 추가 (`supabase.rpc('delete_user')`)
+- [x] `Header.jsx` 전면 개편 — 좌우 20px 패딩, 뒤로가기(좌) + 타이틀(중앙) + `···` 메뉴(우)
+- [x] `···` 메뉴 — 로그아웃 / 회원탈퇴 (탈퇴 1회 확인)
+- [x] `vercel.json` SPA 리라이트 규칙 추가 (카카오 OAuth 404 수정)
+- [x] `check-stock` mock 모드 조건 버그 수정 (`GEMINI_API_KEY` → `ANTHROPIC_API_KEY`)
+
+### SearchScreen 디자인 디벨롭 (진행 중 → 제미나이 인계)
+- [x] 타이틀 2줄 처리 ("오늘은 / 어떤 종목에 물리고 싶어?")
+- [x] 이모지 원형 글래스 사이즈 축소
+- [x] 실시간 이슈 배너 → 검색바 하단 센터 정렬으로 이동
+- [x] 인기종목 구분선 + 섹션 헤더 ("🔥 지금 뜨고 있는 종목 · 5개")
+- [x] 히어로 이미지 교체 — `hero-fishing.png` (낚시 스티커)
+- [x] 글래스모피즘 원형 컨테이너 + 이미지 JOMO 스타일 적용
+- [ ] SearchScreen 디자인 최종 완성 (제미나이 작업 중)
+
+---
+
+## 6단계: 다음 작업
+
+### 즉시 해야 할 것 (Phase 8)
+- [ ] iOS Liquid Glass 디자인 토큰 정의 → VerdictScreen 히어로 카드 우선 적용
+- [ ] 브라우저에서 실제 판결 플로우 검증 (장중 09:00~15:30)
+
+### 브라우저 실제 검증
+- [ ] 장중 시간(09:00~15:30)에 앱 접속 → 실시간 이슈 배너 데이터 확인
+  - Network 탭 → `issue-feed` Edge Function 호출 및 응답 확인
+  - DB 캐시 적중 시 Edge Function 호출 없음 확인 (30분 이내 재접속)
+- [ ] 종목 검색 후 VerdictScreen 전체 필드 정상 출력 확인
+  - `headlineMent`, `lossConversion`, 이유 카드 4개, 이슈 태그 바
+  - 시뮬레이션 3개월/6개월/1년 + best/worst 밴드
+- [ ] DART_API_KEY Supabase Secrets 등록 확인
+
+### GitHub 연결 + Vercel 자동배포
+- [ ] GitHub 원격 저장소 생성 (private)
+  ```bash
+  git remote add origin https://github.com/<username>/stockcheck.git
+  git push -u origin master
+  ```
+- [ ] Vercel → GitHub 연결 (자동배포 설정)
+  - Vercel Dashboard → Settings → Git → Connect Repository
+  - main 브랜치 push 시 자동 배포
 
 ---
 
@@ -313,9 +446,9 @@
 
 - [ ] 카카오톡 공유 — 판결 결과 공유 카드
 - [ ] 가상매수 추적 — "안 샀다면 어땠을지" 3일 후 추적
-- [ ] 인기종목 칩 — KIS 거래량 상위 실시간 연동 (현재 하드코딩)
+- [x] 인기종목 칩 — KIS 거래량 상위 실시간 연동 (`issue-feed` Edge Function으로 대체 완료)
 - [ ] 미국 주식 지원 — Yahoo Finance API 연동
 - [ ] 유료 전환 — 3회 무료 → 유료 플랜
-- [ ] Claude API 교체 — Gemini → Claude Haiku (멘트 퀄리티 향상)
+- [x] Claude API 교체 — Gemini → Claude Haiku (Phase 2에서 완료)
 - [ ] 푸시 알림 — 관심 종목 급등/급락 알림
 - [ ] 버튼명 최종 확정 — "그래도 사면?" 검토

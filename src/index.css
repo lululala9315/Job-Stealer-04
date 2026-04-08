@@ -9,7 +9,7 @@
 
 @theme {
   /* ── 배경 ── */
-  --color-bg: #ffffff;
+  --color-bg: #f2f4f6;    /* grey100 — TDS adaptiveGreyOpacity50 */
   --color-bg-card: #ffffff;
   --color-bg-elevated: #ffffff;
   --color-bg-input: #f2f4f6;    /* grey100 — TDS adaptiveGreyOpacity50 */
@@ -97,6 +97,21 @@
   --button-line-height: 1.252;
   --button-radius: var(--radius-lg);
 
+  /* ── 버튼 색상 위계 ── */
+  /* Primary: 검정 (메인 CTA) */
+  --btn-primary-bg: #191f28;
+  --btn-primary-text: #ffffff;
+  /* Secondary: 하늘색 Liquid Glass (보조 CTA) */
+  --btn-sky-bg: rgba(208, 236, 255, 0.88);
+  --btn-sky-text: #1a7fbf;
+  --btn-sky-glow: rgba(26, 127, 191, 0.12);
+  /* Tertiary: 흰색 Liquid Glass (취소/백) */
+  --btn-white-bg: rgba(255, 255, 255, 0.82);
+  --btn-white-text: var(--color-text-secondary);
+  /* Liquid Glass 원형 아이콘 버튼 (헤더) */
+  --btn-glass-circle-bg: rgba(255, 255, 255, 0.82);
+  --btn-glass-circle-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 0 0 0.5px rgba(0,0,0,0.07), 0 2px 10px rgba(0,0,0,0.09), 0 1px 3px rgba(0,0,0,0.04);
+
   /* ── 인풋 ── */
   --input-height: 52px;
   --input-radius: var(--radius-lg);
@@ -117,11 +132,27 @@
   --color-verdict-hold-glow: rgba(139, 149, 161, 0.12);
   --color-verdict-hold-glass: rgba(139, 149, 161, 0.06);
 
-  /* ── 글래스모피즘 (판결 히어로 섹션 전용) ── */
-  --glass-bg: rgba(255, 255, 255, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.5);
-  --glass-blur: 20px;
-  --glass-shadow: 0 8px 32px rgba(0, 27, 55, 0.08);
+  /* ── iOS Liquid Glass (판결/시뮬레이션 섹션 전용) ── */
+  /* 기존 glassmorphism(blur 20px, 단순 border)과 달리:
+     deep blur + saturate + specular highlight + 3레이어 그림자로 "wet glass" 질감 구현 */
+  --liquid-blur: 40px;
+  --liquid-saturate: 200%;
+  --liquid-base-bg: rgba(255, 255, 255, 0.20);
+  --liquid-border-top: inset 0 1px 0 rgba(255, 255, 255, 0.80);   /* 상단 반사광 내부 선 */
+  --liquid-border-side: inset 1px 0 0 rgba(255, 255, 255, 0.30);  /* 측면 미세 하이라이트 */
+  --liquid-outer-rim: 0 0 0 0.5px rgba(255, 255, 255, 0.40);      /* 외부 유리 테두리 */
+  --liquid-shadow-ambient: 0 2px 8px rgba(0, 0, 0, 0.05);          /* 주변광 그림자 */
+  --liquid-shadow-cast: 0 8px 32px rgba(0, 0, 0, 0.10);            /* 직사 그림자 */
+
+  /* 등급별 Liquid Glass tint (색조 + 글로우) */
+  --liquid-ban-tint:  rgba(240, 68, 82, 0.12);
+  --liquid-ban-glow:  0 12px 48px rgba(240, 68, 82, 0.22);
+  --liquid-wait-tint: rgba(245, 158, 11, 0.10);
+  --liquid-wait-glow: 0 12px 48px rgba(245, 158, 11, 0.20);
+  --liquid-ok-tint:   rgba(49, 130, 246, 0.10);
+  --liquid-ok-glow:   0 12px 48px rgba(49, 130, 246, 0.20);
+  --liquid-hold-tint: rgba(139, 149, 161, 0.07);
+  --liquid-hold-glow: 0 12px 48px rgba(139, 149, 161, 0.14);
 
   /* ── 스티커 이모지 ── */
   --sticker-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -149,10 +180,11 @@ html {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #ffffff;
 }
 
 body {
-  background-color: var(--color-bg);
+  background-color: #ffffff;
   color: var(--color-text-primary);
   min-height: 100dvh;
 }
@@ -162,6 +194,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  background-color: #ffffff;
 }
 
 /* 태블릿/데스크탑: 콘텐츠 중앙 정렬 */
@@ -181,19 +214,55 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* 스티커 이모지 float 애니메이션 */
-@keyframes emojiFloat {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-6px); }
+/* 스티커 이모지 — Toss 붕어빵 스타일 좌우 swim 애니메이션 */
+@keyframes fishSwim {
+  0%   { transform: rotate(-5deg) translateY(1px); }
+  50%  { transform: rotate(5deg) translateY(-1px); }
+  100% { transform: rotate(-5deg) translateY(1px); }
 }
 
-/* 글래스모피즘 유틸 클래스 — 판결 히어로 섹션 전용 */
+/* iOS Liquid Glass 유틸 클래스 — 판결/시뮬레이션 섹션 전용 */
+/* specular highlight는 ::before pseudo로 구현 (absolute 오버레이) */
+.liquid-glass {
+  background: var(--liquid-base-bg);
+  backdrop-filter: blur(var(--liquid-blur)) saturate(var(--liquid-saturate));
+  -webkit-backdrop-filter: blur(var(--liquid-blur)) saturate(var(--liquid-saturate));
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    var(--liquid-border-top),
+    var(--liquid-border-side),
+    var(--liquid-outer-rim),
+    var(--liquid-shadow-cast),
+    var(--liquid-shadow-ambient);
+}
+
+/* specular highlight — 상단 반사광. 유리 위에 빛이 맺힌 느낌 */
+.liquid-glass::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 56%;  /* 위쪽 절반에만 반사광 */
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.42) 0%,
+    rgba(255, 255, 255, 0.10) 40%,
+    rgba(255, 255, 255, 0.00) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+}
+
+/* liquid-glass 자식 요소는 specular 위에 렌더링 */
+.liquid-glass > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 이전 코드 호환 — glass-card는 liquid-glass 별칭 */
 .glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
+  composes: liquid-glass;
 }
 
 /* 스티커 이모지 — CSS only, 이미지 불필요 */
@@ -204,7 +273,7 @@ body {
     0 0 4px rgba(255, 255, 255, 0.9),
     0 0 8px rgba(255, 255, 255, 0.7);
   filter: drop-shadow(var(--sticker-shadow));
-  animation: emojiFloat 3s ease-in-out infinite;
+  animation: fishSwim 2.4s ease-in-out infinite;
   display: inline-block;
 }
 
@@ -226,6 +295,19 @@ body {
   z-index: 0;
   pointer-events: none;
 }
+
+
+/* AmountInput placeholder 색상 */
+.amount-input::placeholder { color: var(--color-text-tertiary); font-weight: 500; }
+
+/* 수량 입력 블링킹 커서 — 입력란 인지를 위해 */
+@keyframes inputCursorBlink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* 검색 로딩 스피너 */
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* 모션 감소 설정 시 애니메이션 비활성화 */
 @media (prefers-reduced-motion: reduce) {
