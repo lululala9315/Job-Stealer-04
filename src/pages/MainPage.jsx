@@ -124,6 +124,16 @@ export default function MainPage() {
     }
   }
 
+  // 로그아웃/회원탈퇴 시 메인 검색화면으로 리셋
+  useEffect(() => {
+    if (!user && step !== STEPS.SEARCH) {
+      setStep(STEPS.SEARCH)
+      setResult(null)
+      setQuery('')
+      setError(null)
+    }
+  }, [user])
+
   // 에러 토스트 4초 후 자동 클리어
   useEffect(() => {
     if (!error) return

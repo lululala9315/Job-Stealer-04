@@ -126,6 +126,8 @@ export default function SearchScreen({ onSearch, isSearching = false }) {
                   height: '56px',
                   width: 'auto',
                   visibility: src === EMOJI_SEQUENCE[emojiIdx].src ? 'visible' : 'hidden',
+                  willChange: 'visibility',
+                  transform: 'translateZ(0)',
                   filter: `
                     drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff)
                     drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff)
@@ -424,8 +426,8 @@ export default function SearchScreen({ onSearch, isSearching = false }) {
           marginLeft: '-20px',
           marginRight: '-20px',
           paddingLeft: '20px',
-          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, #000 60px, #000 calc(100% - 60px), transparent 100%)',
-          maskImage: 'linear-gradient(to right, transparent 0%, #000 60px, #000 calc(100% - 60px), transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, #000 100px, #000 calc(100% - 100px), transparent 100%)',
+          maskImage: 'linear-gradient(to right, transparent 0%, #000 100px, #000 calc(100% - 100px), transparent 100%)',
         }}>
           <div className="marquee-track" style={{ display: 'flex', gap: '8px', width: 'max-content' }}>
             {[...POPULAR_STOCKS, ...POPULAR_STOCKS].map((stock, i) => (

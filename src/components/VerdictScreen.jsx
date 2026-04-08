@@ -85,6 +85,8 @@ function GradeEmoji({ grade, size = 72, once = false }) {
               width: 'auto',
               filter: STICKER_FILTER,
               visibility: src === currentSrc ? 'visible' : 'hidden',
+              willChange: 'visibility',
+              transform: 'translateZ(0)',
             }}
           />
         ))}
@@ -232,8 +234,8 @@ const LIFE_LABELS = [
   { max: 280000, emoji: '🎧', text: '에어팟' },
   { max: 450000, emoji: '🎮', text: '닌텐도 스위치' },
   { max: 700000, emoji: '🏝️', text: '제주도 여행' },
-  { max: 900000, emoji: '📱', text: '아이패드' },
-  { max: 1400000, emoji: '📱', text: '아이폰' },
+  { max: 1100000, emoji: '📱', text: '아이패드' },
+  { max: 1600000, emoji: '📱', text: '아이폰' },
   { max: 2000000, emoji: '✈️', text: '유럽 왕복 항공권' },
   { max: 3000000, emoji: '💻', text: '맥북 프로' },
   { max: 5000000, emoji: '🏍️', text: '오토바이 한 대' },
