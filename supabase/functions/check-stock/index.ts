@@ -146,11 +146,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { query, userId, investAmount: rawAmount, priceOnly } = await req.json() as {
+    const { query, userId, investAmount: rawAmount, priceOnly, stockName: clientStockName } = await req.json() as {
       query: string
       userId?: string
       investAmount?: number
       priceOnly?: boolean
+      stockName?: string
     }
 
     if (!query) {
@@ -212,17 +213,19 @@ Deno.serve(async (req) => {
       ]),
       // 시장축: Yahoo Finance + Alternative.me
       fetchMarketSignals(),
-      // 뉴스축: 네이버 뉴스 실제 기사 내용
-      fetchNewsItems(query),
+      // 뉴스축: 종목코드(6자리)로 검색하면 엉뚱한 결과 → 코드일 때 빈 배열, 종목명일 때만 검색
+      /^\d{6}$/.test(query.trim()) ? Promise.resolve([]) : fetchNewsItems(query),
       // 공시축: DART 관리종목/투자주의 체크
       fetchDartData(stockCode),
     ])
 
-    const stockName = priceData.stockName
+    // KIS API 종목명 → 프론트 전달 종목명 → query 순으로 fallback
+    const stockName = priceData.stockName || clientStockName || query
 
-    // 뉴스를 실제 종목명으로 재조회 (query가 코드였을 경우 보완)
-    const finalNewsItems = stockName !== query
-      ? await fetchNewsItems(stockName).catch(() => newsItems)
+    // 뉴스를 종목명으로 조회 (undefined/코드 방지)
+    const newsSearchName = stockName && !/^\d{6}$/.test(stockName) ? stockName : null
+    const finalNewsItems = newsSearchName
+      ? await fetchNewsItems(newsSearchName).catch(() => newsItems)
       : newsItems
 
     // ── 참고용 룰 기반 스코어 (LLM 컨텍스트로만 활용) ──
@@ -893,12 +896,12 @@ function scoreMarket(signals: MarketSignals, marketType: PriceData['marketType']
   else if (drawdown >= 80) indexScore = 2
   breakdown['지수위치'] = indexScore
 
-  // 4. 금리 (8점) — 고금리일수록 위험
+  // 4. 금리 (8점) — 고금리일수록 위험 (4%대는 중립 수준으로 조정)
   let rateScore = 0
-  if (signals.fedRate >= 5) rateScore = 8
-  else if (signals.fedRate >= 4) rateScore = 6
-  else if (signals.fedRate >= 3) rateScore = 4
-  else if (signals.fedRate >= 2) rateScore = 2
+  if (signals.fedRate >= 5.5) rateScore = 8
+  else if (signals.fedRate >= 5) rateScore = 6
+  else if (signals.fedRate >= 4.5) rateScore = 4
+  else if (signals.fedRate >= 4) rateScore = 2
   breakdown['금리'] = rateScore
 
   // 5. 달러/유동성 (6점) — 달러 강세 = 신흥국 유동성 위험
@@ -998,40 +1001,58 @@ function combineVerdict(
 
 /** 손실 표현 룩업 — 금액대별 실생활 치환 아이템 */
 const LOSS_LABELS = [
-  { max: 12000,    text: '편의점 야식',               emoji: '🍜' },
-  { max: 25000,    text: '떡볶이 2인분',              emoji: '🌶️' },
-  { max: 40000,    text: '치킨 한 마리',              emoji: '🍗' },
-  { max: 60000,    text: '삼겹살 2인분',              emoji: '🥩' },
-  { max: 90000,    text: '헬스장 한 달',              emoji: '🏋️' },
-  { max: 130000,   text: '치킨 5마리',                emoji: '🍗' },
-  { max: 180000,   text: '콘서트 좌석 하나',          emoji: '🎵' },
-  { max: 250000,   text: '제주도 편도 항공권',        emoji: '✈️' },
-  { max: 350000,   text: '운동화 한 켤레',            emoji: '👟' },
-  { max: 500000,   text: '제주도 왕복',               emoji: '🏝️' },
-  { max: 700000,   text: '갤럭시 버즈',               emoji: '🎧' },
-  { max: 1000000,  text: '중고 닌텐도 스위치',        emoji: '🎮' },
-  { max: 1500000,  text: '최신 아이폰 절반 가격',     emoji: '📱' },
-  { max: 2500000,  text: '중고 맥북',                 emoji: '💻' },
-  { max: 4000000,  text: '유럽행 왕복 항공권',        emoji: '🌍' },
-  { max: 7000000,  text: '한강뷰 원룸 보증금 일부',   emoji: '🌆' },
-  { max: Infinity, text: '꿈에서나 살 수 있는 것들',  emoji: '💭' },
+  { max: 5000,     text: '아메리카노 1잔',            emoji: '☕' },
+  { max: 10000,    text: '점심 한 끼',                emoji: '🍜' },
+  { max: 20000,    text: '떡볶이 세트',               emoji: '🌶️' },
+  { max: 35000,    text: '치킨 한 마리',              emoji: '🍗' },
+  { max: 55000,    text: '삼겹살 2인분',              emoji: '🥩' },
+  { max: 80000,    text: '영화 2인 팝콘 세트',        emoji: '🍿' },
+  { max: 120000,   text: '넷플릭스 7개월',            emoji: '📺' },
+  { max: 180000,   text: '나이키 운동화',             emoji: '👟' },
+  { max: 250000,   text: '에어팟',                    emoji: '🎧' },
+  { max: 400000,   text: '닌텐도 스위치',             emoji: '🎮' },
+  { max: 600000,   text: '아이패드',                  emoji: '📱' },
+  { max: 1000000,  text: '제주도 여행',               emoji: '🏝️' },
+  { max: 1600000,  text: '아이폰',                    emoji: '📱' },
+  { max: 2500000,  text: '맥북 에어',                 emoji: '💻' },
+  { max: 4000000,  text: '유럽 왕복 항공권',          emoji: '✈️' },
+  { max: 7000000,  text: '오토바이 한 대',            emoji: '🏍️' },
+  { max: 12000000, text: '중고차 한 대',              emoji: '🚗' },
+  { max: 18000000, text: '전기 스쿠터 3대',           emoji: '🛵' },
+  { max: 25000000, text: '소형차 한 대',              emoji: '🚙' },
+  { max: 35000000, text: '전세 보증금 일부',          emoji: '🏠' },
+  { max: 50000000, text: '중형차 한 대',              emoji: '🚘' },
+  { max: 80000000, text: '원룸 전세',                 emoji: '🏡' },
+  { max: 150000000,text: '수입차 한 대',              emoji: '🚘' },
+  { max: Infinity, text: '아파트 보증금',             emoji: '🏢' },
 ]
 
 /** 수익 표현 룩업 — 금액대별 실생활 치환 아이템 */
 const GAIN_LABELS = [
-  { max: 5000,     text: '편의점 커피',               emoji: '☕' },
-  { max: 15000,    text: '떡볶이 한 그릇',            emoji: '🌶️' },
-  { max: 30000,    text: '버거 세트 하나',            emoji: '🍔' },
-  { max: 50000,    text: '치킨 한 마리',              emoji: '🍗' },
-  { max: 80000,    text: '소고기 한 팩',              emoji: '🥩' },
-  { max: 150000,   text: '에어팟 케이블',             emoji: '🎧' },
-  { max: 300000,   text: '무선 청소기 필터 세트',     emoji: '🧹' },
-  { max: 500000,   text: '아이패드 반 대',            emoji: '📱' },
-  { max: 800000,   text: '갤럭시 버즈 신형',          emoji: '🎵' },
-  { max: 1500000,  text: '국내여행 2박 3일',          emoji: '🗺️' },
-  { max: 3000000,  text: '최신 아이폰',               emoji: '📱' },
-  { max: 6000000,  text: '중고 외제차 할부금',        emoji: '🚗' },
-  { max: Infinity, text: '꿈에서나 벌 수 있는 금액', emoji: '💰' },
+  { max: 5000,     text: '아메리카노 1잔',            emoji: '☕' },
+  { max: 10000,    text: '점심 한 끼',                emoji: '🍜' },
+  { max: 20000,    text: '떡볶이 세트',               emoji: '🌶️' },
+  { max: 35000,    text: '치킨 한 마리',              emoji: '🍗' },
+  { max: 55000,    text: '삼겹살 2인분',              emoji: '🥩' },
+  { max: 80000,    text: '영화 2인 팝콘 세트',        emoji: '🍿' },
+  { max: 120000,   text: '넷플릭스 7개월',            emoji: '📺' },
+  { max: 180000,   text: '나이키 운동화',             emoji: '👟' },
+  { max: 250000,   text: '에어팟',                    emoji: '🎧' },
+  { max: 400000,   text: '닌텐도 스위치',             emoji: '🎮' },
+  { max: 600000,   text: '아이패드',                  emoji: '📱' },
+  { max: 1000000,  text: '제주도 여행',               emoji: '🏝️' },
+  { max: 1600000,  text: '아이폰',                    emoji: '📱' },
+  { max: 2500000,  text: '맥북 에어',                 emoji: '💻' },
+  { max: 4000000,  text: '유럽 왕복 항공권',          emoji: '✈️' },
+  { max: 7000000,  text: '오토바이 한 대',            emoji: '🏍️' },
+  { max: 12000000, text: '중고차 한 대',              emoji: '🚗' },
+  { max: 18000000, text: '전기 스쿠터 3대',           emoji: '🛵' },
+  { max: 25000000, text: '소형차 한 대',              emoji: '🚙' },
+  { max: 35000000, text: '전세 보증금 일부',          emoji: '🏠' },
+  { max: 50000000, text: '중형차 한 대',              emoji: '🚘' },
+  { max: 80000000, text: '원룸 전세',                 emoji: '🏡' },
+  { max: 150000000,text: '수입차 한 대',              emoji: '🚘' },
+  { max: Infinity, text: '아파트 보증금',             emoji: '🏢' },
 ]
 
 /** 금액에 맞는 손실 표현 선택 */
@@ -1098,64 +1119,106 @@ function getLongTermUnit(amount: number) {
   return { label: picked.label, emoji: picked.emoji }
 }
 
-/** 단기 + 장기 시뮬레이션 통합 생성 */
+/** Box-Muller 정규분포 난수 생성 */
+function normalRandom(): number {
+  const u1 = Math.random()
+  const u2 = Math.random()
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
+}
+
+/** 배열 평균 */
+function avg(arr: number[]): number {
+  return arr.length > 0 ? arr.reduce((s, v) => s + v, 0) / arr.length : 0
+}
+
+/** 배열 표준편차 (표본) */
+function stddev(arr: number[]): number {
+  if (arr.length < 2) return 0
+  const m = avg(arr)
+  return Math.sqrt(arr.reduce((s, v) => s + (v - m) ** 2, 0) / (arr.length - 1))
+}
+
+/** 단기 + 장기 시뮬레이션 통합 생성 — 몬테카를로 GBM 기반 */
 function buildSimulation(
   price: PriceData,
   daily: DailyBar[],
   investAmount: number,
 ): VerdictResult['simulation'] {
-  // 일별 변동성 계산 (20일)
-  const returns = daily.slice(0, 20).map(d => d.changeRate)
-  const mean = returns.length > 0 ? returns.reduce((s, r) => s + r, 0) / returns.length : 0
-  const variance = returns.length > 1
-    ? returns.reduce((s, r) => s + (r - mean) ** 2, 0) / (returns.length - 1)
-    : 0
-  const dailyVol = Math.sqrt(variance)
+  // 로그 수익률 계산 (20일) — GBM에 적합한 형태
+  const rawReturns = daily.slice(0, 20).map(d => d.changeRate / 100)
+  const shortReturns = rawReturns.slice(0, 5)   // 최근 5일
+  const medReturns = rawReturns.slice(0, 10)     // 최근 10일
+
+  // 일별 변동성 (전체 20일 기준)
+  const dailyVol = stddev(rawReturns)
   const threeDayVol = dailyVol * Math.sqrt(3)
 
-  // 단기 시뮬레이션 (3일)
+  // 단기 시뮬레이션 (3일) — 기존 방식 유지
   const shortTerm = {
-    dailyVolatility: Math.round(dailyVol * 100) / 100,
+    dailyVolatility: Math.round(dailyVol * 10000) / 100,
     threeDayRange: {
-      bestCase: Math.round(threeDayVol * 100) / 100,
-      worstCase: Math.round(-threeDayVol * 100) / 100,
+      bestCase: Math.round(threeDayVol * 10000) / 100,
+      worstCase: Math.round(-threeDayVol * 10000) / 100,
     },
   }
 
-  // 장기 시뮬레이션 — 연평균 수익률 + 변동성 기반 best/worst case
-  // 종목 과거 수익률 기반: 20일 평균 수익률 * 250 거래일
-  const annualReturnRaw = mean * 250 / 100
-  // 너무 극단적인 값은 클램프 (현실적 범위: -20% ~ +30%)
-  const annualReturn = Math.max(-0.2, Math.min(0.3, annualReturnRaw))
-  const annualVol = dailyVol * Math.sqrt(252) / 100
+  // 단일 드리프트 — 단기+장기 블렌딩 (하나의 경로로 시뮬레이션)
+  const shortMean = avg(shortReturns)
+  const medMean = avg(medReturns)
+  const fullMean = avg(rawReturns)
+  const blendedDrift = Math.max(-0.4, Math.min(0.5,
+    (0.3 * shortMean + 0.3 * medMean + 0.4 * fullMean) * 252
+  ))
 
-  // 기간별 단일 예측값 (기댓값) + 차트용 범위 밴드 (±1.28σ)
-  function calcScenario(months: number) {
-    const years = months / 12
-    const expectedReturn = annualReturn * years
-    const bandWidth = annualVol * Math.sqrt(years) * 1.28
+  const annualVol = dailyVol * Math.sqrt(252)
 
-    const amount      = Math.round(investAmount * (1 + expectedReturn))
-    const bestAmount  = Math.round(investAmount * (1 + expectedReturn + bandWidth))
-    const worstAmount = Math.round(investAmount * (1 + expectedReturn - bandWidth))
-    const gain        = amount - investAmount
+  // 몬테카를로 시뮬레이션 — 1년치 단일 경로, 3개월/6개월 체크포인트
+  const NUM_SIMS = 1000
+  const TOTAL_DAYS = 252 // 1년 거래일
+  const CHECKPOINTS: Record<string, number> = { month3: 63, month6: 126, year1: 252 }
 
-    // 수익/손실 금액 기준 라벨 — 창의적 실생활 치환
-    const absGain = Math.abs(gain)
-    const labelItem = gain >= 0 ? getGainLabel(absGain) : getLossLabel(absGain)
-    const label = gain >= 0
-      ? `${labelItem.text} 살 수 있어`
-      : `${labelItem.text}만큼이야`
+  // 각 체크포인트별 값 수집용
+  const snapshots: Record<string, number[]> = { month3: [], month6: [], year1: [] }
 
-    return { amount, gain, bestAmount, worstAmount, label, emoji: labelItem.emoji }
+  const dailyDrift = (blendedDrift - (annualVol ** 2) / 2) / 252
+  const dailySigma = annualVol / Math.sqrt(252)
+
+  for (let sim = 0; sim < NUM_SIMS; sim++) {
+    let value = investAmount
+    for (let day = 1; day <= TOTAL_DAYS; day++) {
+      // GBM: S(t+1) = S(t) * exp(μdt + σ√dt * Z)
+      const z = normalRandom()
+      value *= Math.exp(dailyDrift + dailySigma * z)
+      value = Math.max(0, value)
+
+      // 체크포인트 도달 시 스냅샷 저장
+      for (const [key, targetDay] of Object.entries(CHECKPOINTS)) {
+        if (day === targetDay) snapshots[key].push(value)
+      }
+    }
   }
 
+  // 각 체크포인트 퍼센타일 추출 → 결과 생성
+  function buildProjection(key: string) {
+    const values = snapshots[key].sort((a, b) => a - b)
+    const amount = Math.round(values[Math.floor(NUM_SIMS * 0.5)])
+    const bestAmount = Math.round(values[Math.floor(NUM_SIMS * 0.9)])
+    const worstAmount = Math.round(values[Math.floor(NUM_SIMS * 0.1)])
+    const gain = amount - investAmount
+    const absGain = Math.abs(gain)
+    const labelItem = gain >= 0 ? getGainLabel(absGain) : getLossLabel(absGain)
+    return { amount, gain, bestAmount, worstAmount, label: labelItem.text, emoji: labelItem.emoji }
+  }
+
+  // 대표 연간 수익률 — 전체 20일 기준 (표시용)
+  const displayAnnualReturn = Math.max(-0.4, Math.min(0.5, fullMean * 252))
+
   const longTerm = {
-    annualReturn: Math.round(annualReturn * 1000) / 10, // % 단위
+    annualReturn: Math.round(displayAnnualReturn * 1000) / 10,
     projections: {
-      month3: calcScenario(3),
-      month6: calcScenario(6),
-      year1:  calcScenario(12),
+      month3: buildProjection('month3'),
+      month6: buildProjection('month6'),
+      year1:  buildProjection('year1'),
     },
   }
 
@@ -1258,7 +1321,7 @@ async function analyzeWithLLM(ctx: {
     prelimGrade = 'ban'
   } else if (totalRuleScore >= 35) {
     prelimGrade = 'ban'
-  } else if (totalRuleScore >= 18) {
+  } else if (totalRuleScore >= 22) {
     prelimGrade = 'wait'
   } else {
     prelimGrade = 'ok'
@@ -1327,13 +1390,14 @@ ${newsSection}
 시장 위험: ${ctx.marketScore.score}/40
 → 예비 판정: **${PRELIM_LABELS[prelimGrade]}(${prelimGrade})**
 
-이 예비 판정을 출발점으로 검토해. 뒤집으려면 구체적 근거 있어야 해.
+⚠️ 이 예비 판정은 단순 규칙 합산이라 맥락을 모름. 네가 직접 판단해. 예비 판정을 무시해도 돼.
+특히 삼성전자·SK하이닉스·현대차 같은 대형 우량주는 시장이 약간 불안해도 종목 자체가 튼튼하면 ok가 맞아. 예비 판정에 끌려가지 마.
 
 ━━━ 판정 기준 ━━━
 🚨 ban(절대금지): 관리종목/투자주의/상장폐지, VIX 35+, 연속 하락 + 적자 + 소형주 복합, 부실 징후
-🤔 wait(대기): 시장 불안정, 고점 과열, 조정 가능성, 부정적 뉴스
-😎 ok(괜찮아 보여): 합리적 밸류, 안정 흐름, 관리 가능한 리스크
-🫠 hold(관망): KIS·뉴스·시장 데이터가 모두 없어서 아예 판단 불가한 경우에만. 데이터 있으면 절대 hold 금지.
+🤔 wait(대기): 52주 고점 90%↑ + 과열, 연속 하락 + 부정 뉴스, 적자 + PER 과도, 시총 3000억 미만 소형주이면서 정보가 부족한 경우, 위험 신호와 긍정 신호가 팽팽하게 섞인 경우.
+😎 ok(괜찮아 보여): 뚜렷한 위험 신호가 없고, 밸류·흐름·시장 중 대부분이 무난하면 ok. 대형 우량주는 특별한 악재가 없으면 ok가 자연스러워. 단, 소형주나 적자 기업은 긍정 근거가 명확할 때만 ok.
+🫠 hold(관망): KIS·뉴스·시장 데이터가 모두 없어서 아예 판단 불가한 경우에만.
 
 ━━━ 말투 ━━━
 사기 전에 판단해주는 앱이야. 담담하게 툭 던지는 드립 한 줄.
@@ -1364,6 +1428,7 @@ ${newsSection}
 ━━━ 응답 형식 (JSON만, 다른 텍스트 없이) ━━━
 {
   "grade": "ban | wait | ok | hold",
+  "confidence": "high | medium | low (판단 확신도. low이면 절대 ok 금지—wait이나 hold로. medium이면 ok보다 wait 우선.)",
   "score": 0~100 (높을수록 위험),
   "headlineMent": "10~20자. 담담한 자조 드립. 툭 던지는 한 마디. 위 좋은 예시 스타일로.",
   "lossConversion": "손실 치환 문장. 위 지시대로.",

@@ -10,7 +10,7 @@ import SearchScreen from '../components/SearchScreen'
 import AmountInput from '../components/AmountInput'
 import LoadingScreen from '../components/LoadingScreen'
 import VerdictScreen from '../components/VerdictScreen'
-import SimulationScreen from '../components/SimulationScreen'
+// SimulationScreen은 VerdictScreen에 인라인 통합됨
 import LoginBottomSheet from '../components/LoginBottomSheet'
 import USStockSheet from '../components/USStockSheet'
 
@@ -104,7 +104,7 @@ export default function MainPage() {
 
     try {
       const { data, error: fnError } = await supabase.functions.invoke('check-stock', {
-        body: { query, userId: user?.id, investAmount: amount },
+        body: { query, userId: user?.id, investAmount: amount, stockName },
       })
 
       if (data?.error) throw new Error(data.error)
@@ -151,12 +151,11 @@ export default function MainPage() {
   }
 
   const handleBack = step === STEPS.SEARCH ? null : () => {
-    if (step === STEPS.AMOUNT)          setStep(STEPS.SEARCH)
-    else if (step === STEPS.VERDICT)    setStep(STEPS.SEARCH)
-    else if (step === STEPS.SIMULATION) setStep(STEPS.VERDICT)
+    if (step === STEPS.AMOUNT)       setStep(STEPS.SEARCH)
+    else if (step === STEPS.VERDICT) setStep(STEPS.SEARCH)
   }
 
-  const headerTitle = step === STEPS.SIMULATION ? '시뮬레이션' : ''
+  const headerTitle = ''
 
   const isAmountStep   = step === STEPS.AMOUNT
   const isLoadingStep  = step === STEPS.LOADING
@@ -208,14 +207,6 @@ export default function MainPage() {
               result={result}
               stockName={stockName}
               shares={shares}
-              priceAtCheck={priceAtCheck}
-              onSimulation={() => setStep(STEPS.SIMULATION)}
-              onReset={handleReset}
-            />
-          )}
-          {step === STEPS.SIMULATION && result && (
-            <SimulationScreen
-              simulation={result.simulation}
               investAmount={investAmount}
               onReset={handleReset}
             />
