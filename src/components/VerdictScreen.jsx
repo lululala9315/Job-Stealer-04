@@ -234,8 +234,8 @@ const LIFE_LABELS = [
   { max: 280000, emoji: '🎧', text: '에어팟' },
   { max: 450000, emoji: '🎮', text: '닌텐도 스위치' },
   { max: 700000, emoji: '🏝️', text: '제주도 여행' },
-  { max: 1100000, emoji: '📱', text: '아이패드' },
-  { max: 1600000, emoji: '📱', text: '아이폰' },
+  { max: 900000, emoji: '📱', text: '아이패드' },
+  { max: 1500000, emoji: '📱', text: '아이폰' },
   { max: 2000000, emoji: '✈️', text: '유럽 왕복 항공권' },
   { max: 3000000, emoji: '💻', text: '맥북 프로' },
   { max: 5000000, emoji: '🏍️', text: '오토바이 한 대' },
@@ -394,7 +394,7 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
         <div style={{
           marginTop: '16px',
           marginBottom: '8px',
-          animation: 'stickerDrop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.32s both',
+          animation: 'stickerDrop 0.45s cubic-bezier(0.2, 0, 0, 1) 0.32s both',
         }}>
           <GradeEmoji grade={grade} size={80} once />
         </div>
@@ -609,11 +609,51 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
         paddingBottom: 'calc(28px + env(safe-area-inset-bottom, 0px))',
         backgroundColor: '#F3F4F6',
         animation: 'verdictIn 0.35s cubic-bezier(0.2, 0, 0, 1) 0.18s both',
+        display: 'flex',
+        gap: '8px',
       }}>
+        {/* 공유하기 — 라인 스타일 보조 버튼 */}
+        <button
+          onClick={() => {
+            const shareText = `${resolvedStockName} ${title}\n\n지금 이 종목, 사도 될까? 👉 https://stockcheck-pi.vercel.app`
+            if (navigator.share) {
+              navigator.share({ text: shareText }).catch(() => {})
+            } else {
+              navigator.clipboard?.writeText(shareText)
+            }
+          }}
+          style={{
+            width: '54px',
+            height: '54px',
+            flexShrink: 0,
+            backgroundColor: 'transparent',
+            border: '1.5px solid rgba(0,0,0,0.12)',
+            borderRadius: '14px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'transform 0.1s, background-color 0.1s',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+          onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.95)' }}
+          onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
+          onTouchStart={(e) => { e.currentTarget.style.transform = 'scale(0.95)' }}
+          onTouchEnd={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
+          aria-label="공유하기"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7" stroke="var(--color-text-secondary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            <polyline points="16,6 12,2 8,6" stroke="var(--color-text-secondary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            <line x1="12" y1="2" x2="12" y2="15" stroke="var(--color-text-secondary)" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+        </button>
+        {/* 다른 종목 알아보기 — 메인 CTA */}
         <button
           onClick={onReset}
           style={{
-            width: '100%',
+            flex: 1,
             height: '54px',
             backgroundColor: 'var(--btn-primary-bg)',
             color: 'var(--btn-primary-text)',
@@ -634,7 +674,7 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
           onTouchStart={(e) => { e.currentTarget.style.transform = 'scale(0.98)' }}
           onTouchEnd={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
         >
-          다른 종목도 검색해볼래?
+          다른 종목 알아보기
         </button>
       </div>
 
@@ -741,10 +781,9 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
           to   { opacity: 1; transform: translateY(0); }
         }
         @keyframes stickerDrop {
-          0%   { opacity: 0; transform: scale(0.3) rotate(-8deg) translateY(-30px); }
-          50%  { opacity: 1; transform: scale(1.08) rotate(2deg) translateY(0); }
-          70%  { transform: scale(0.96) rotate(-1deg); }
-          100% { opacity: 1; transform: scale(1) rotate(0deg); }
+          0%   { opacity: 0; transform: scale(0.7); }
+          60%  { opacity: 1; transform: scale(1.04); }
+          100% { opacity: 1; transform: scale(1); }
         }
         @keyframes simIn {
           from { opacity: 0; transform: translateY(8px); }
