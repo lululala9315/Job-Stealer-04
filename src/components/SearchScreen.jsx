@@ -93,7 +93,7 @@ export default function SearchScreen({ onSearch, isSearching = false }) {
       flexDirection: 'column',
       justifyContent: 'center',
       alignItems: 'center',
-      padding: '0 20px 24px',
+      padding: '0 var(--search-px) 24px',
       position: 'relative',
     }}>
       {/* 컨텐츠 전체 너비 wrapper */}
@@ -420,14 +420,13 @@ export default function SearchScreen({ onSearch, isSearching = false }) {
           자주 검색하는 종목
         </span>
 
-        {/* 마퀴 래퍼 */}
+        {/* 마퀴 래퍼 — 양쪽 20px 흰색 마스크, 구분선 경계 기준 */}
         <div style={{
           overflow: 'hidden',
-          marginLeft: '-20px',
-          marginRight: '-20px',
-          paddingLeft: '20px',
-          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, #000 100px, #000 calc(100% - 100px), transparent 100%)',
-          maskImage: 'linear-gradient(to right, transparent 0%, #000 100px, #000 calc(100% - 100px), transparent 100%)',
+          marginLeft: 'calc(-1 * var(--search-px))',
+          marginRight: 'calc(-1 * var(--search-px))',
+          WebkitMaskImage: 'linear-gradient(to right, transparent 0px, transparent var(--search-px), #000 calc(var(--search-px) + 60px), #000 calc(100% - var(--search-px) - 60px), transparent calc(100% - var(--search-px)), transparent 100%)',
+          maskImage: 'linear-gradient(to right, transparent 0px, transparent var(--search-px), #000 calc(var(--search-px) + 60px), #000 calc(100% - var(--search-px) - 60px), transparent calc(100% - var(--search-px)), transparent 100%)',
         }}>
           <div className="marquee-track" style={{ display: 'flex', gap: '8px', width: 'max-content' }}>
             {[...POPULAR_STOCKS, ...POPULAR_STOCKS].map((stock, i) => (

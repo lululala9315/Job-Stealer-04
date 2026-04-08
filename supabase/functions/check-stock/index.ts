@@ -16,7 +16,7 @@ const ALLOWED_ORIGINS = [
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('origin') || ''
-  const allowed = ALLOWED_ORIGINS.some(o => origin === o || origin.endsWith('.vercel.app'))
+  const allowed = ALLOWED_ORIGINS.some(o => origin === o || origin.endsWith('.vercel.app')) || origin.startsWith('http://localhost:')
   return {
     'Access-Control-Allow-Origin': allowed ? origin : ALLOWED_ORIGINS[0],
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',

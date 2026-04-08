@@ -197,6 +197,14 @@ body {
   background-color: #ffffff;
 }
 
+/* 검색 화면 좌우 패딩 — 모바일 30px, 데스크탑 20px */
+:root {
+  --search-px: 30px;
+}
+@media (min-width: 481px) {
+  :root { --search-px: 20px; }
+}
+
 /* 태블릿/데스크탑: 콘텐츠 중앙 정렬 */
 @media (min-width: 640px) {
   body {
