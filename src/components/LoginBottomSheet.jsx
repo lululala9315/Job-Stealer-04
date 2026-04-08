@@ -20,9 +20,33 @@ export default function LoginBottomSheet({ onClose }) {
 
   return (
     <BottomSheet onClose={onClose} zIndex={60}>
+      {/* 닫기 버튼 */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '4px' }}>
+        <button
+          onClick={onClose}
+          aria-label="닫기"
+          style={{
+            width: '30px',
+            height: '30px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(0,0,0,0.06)',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0,
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M1 1l10 10M11 1L1 11" stroke="var(--color-text-secondary)" strokeWidth="1.6" strokeLinecap="round"/>
+          </svg>
+        </button>
+      </div>
+
       {/* 카피 */}
       <p style={{
-        fontSize: '22px', fontWeight: 600,
+        fontSize: '22px', fontWeight: 700,
         color: 'var(--color-text-primary)',
         letterSpacing: '-0.4px', lineHeight: '31px',
         marginBottom: '6px',
