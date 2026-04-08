@@ -27,7 +27,7 @@ export default function LoginBottomSheet({ onClose }) {
         letterSpacing: '-0.4px', lineHeight: '31px',
         marginBottom: '6px',
       }}>
-        물리기 전에<br />나한테 물어봐
+        또 충동적으로 들어갔다<br />물리기 전에 나한테 물어봐
       </p>
       <p style={{
         fontSize: '14px',
