@@ -24,10 +24,10 @@ export function useStockSearch(query) {
     // 6자리 숫자 코드 직접 입력 시 정확 매칭 우선
     if (/^\d{4,6}$/.test(trimmed)) {
       const exact = stocks.filter(s => s.code.startsWith(trimmed))
-      if (exact.length) return exact.slice(0, 6)
+      if (exact.length) return exact.slice(0, 5)
     }
 
-    return fuse.search(trimmed).map(r => r.item).slice(0, 6)
+    return fuse.search(trimmed).map(r => r.item).slice(0, 5)
   }, [query])
 
   return results

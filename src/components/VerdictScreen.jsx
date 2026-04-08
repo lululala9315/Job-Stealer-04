@@ -16,10 +16,14 @@ const STICKER_FILTER = `
 `
 
 /** 등급별 이모지 이미지 시퀀스 — 메인과 동일 3D PNG crossfade */
-/** 시퀀스 생성 — frontal→right→frontal→left를 2사이클 + 정면 마무리 */
+/** 시퀀스 생성 — frontal→right→frontal→left를 3사이클 + 정면 마무리 */
 function makeSeq(name) {
   return [
     { src: `/emoji/${name}-frontal.png`, duration: 900 },
+    { src: `/emoji/${name}-right.png`, duration: 400 },
+    { src: `/emoji/${name}-frontal.png`, duration: 700 },
+    { src: `/emoji/${name}-left.png`, duration: 400 },
+    { src: `/emoji/${name}-frontal.png`, duration: 700 },
     { src: `/emoji/${name}-right.png`, duration: 400 },
     { src: `/emoji/${name}-frontal.png`, duration: 700 },
     { src: `/emoji/${name}-left.png`, duration: 400 },
@@ -330,7 +334,7 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
     /* 페이지 배경 */
     <div style={{
       paddingTop: '20px',
-      paddingBottom: '40px',
+      paddingBottom: 'calc(54px + 28px + 12px + env(safe-area-inset-bottom, 0px))',
       background: '#F3F4F6',
     }}>
       <StickerFilter />
@@ -386,8 +390,8 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
 
         {/* 이모지 — 스티커 붙이기 (태그 아래) */}
         <div style={{
-          marginTop: '8px',
-          marginBottom: '0',
+          marginTop: '16px',
+          marginBottom: '8px',
           animation: 'stickerDrop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.32s both',
         }}>
           <GradeEmoji grade={grade} size={80} once />
@@ -559,7 +563,7 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
         </div>
       )}
 
-      {/* ── 왜 이런 판결이야? (바텀시트 트리거) ── */}
+      {/* ── 이 종목에 대해 궁금해? (바텀시트 트리거) ── */}
       {reasonCards.length > 0 && (
         <div style={{ padding: '0 16px', marginTop: '10px' }}>
           <button
@@ -568,48 +572,68 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
               width: '100%', display: 'flex', alignItems: 'center',
               justifyContent: 'center', gap: '4px',
               padding: '14px 0',
-              background: 'none',
-              border: 'none',
-              borderRadius: '0',
+              background: 'rgba(255,255,255,0.35)',
+              backdropFilter: 'blur(20px) saturate(200%)',
+              WebkitBackdropFilter: 'blur(20px) saturate(200%)',
+              border: '1.5px solid rgba(255,255,255,0.5)',
+              boxShadow: 'inset 0 1.5px 0 rgba(255,255,255,0.5), 0 1px 4px rgba(31,38,135,0.03)',
+              borderRadius: '16px',
               cursor: 'pointer', fontFamily: 'inherit',
             }}
           >
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#8B95A1' }}>
-              왜 이런 판결이야?
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#4B5563' }}>
+              이 종목에 대해 궁금해?
             </span>
             <span style={{ fontSize: '12px', color: '#8B95A1' }}>›</span>
           </button>
         </div>
       )}
 
-      {/* ── CTA ── */}
+      {/* ── 면책 ── */}
+      <p style={{ fontSize: '10px', color: '#8B95A1', textAlign: 'center', lineHeight: '16px', opacity: 0.6, padding: '12px 16px 0' }}>
+        과거 변동성 기준 추정치 · 투자 판단의 책임은 본인에게 있습니다
+      </p>
+
+      {/* ── 하단 고정 CTA ── */}
       <div style={{
-        padding: '16px 16px 0',
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        margin: '0 auto',
+        width: '100%',
+        maxWidth: '480px',
+        padding: '12px 20px',
+        paddingBottom: 'calc(28px + env(safe-area-inset-bottom, 0px))',
+        backgroundColor: '#F3F4F6',
         animation: 'verdictIn 0.35s cubic-bezier(0.2, 0, 0, 1) 0.18s both',
       }}>
         <button
           onClick={onReset}
           style={{
-            width: '100%', height: 'var(--button-height-lg)',
+            width: '100%',
+            height: '54px',
             backgroundColor: 'var(--btn-primary-bg)',
             color: 'var(--btn-primary-text)',
             border: 'none',
-            borderRadius: 'var(--button-radius)',
-            fontSize: '16px', fontWeight: 600, cursor: 'pointer',
-            fontFamily: 'inherit', letterSpacing: '-0.2px',
-            transition: 'transform 0.1s cubic-bezier(0.2, 0, 0, 1)', willChange: 'transform',
-            marginBottom: '12px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            borderRadius: '14px',
+            fontSize: '17px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            letterSpacing: '-0.2px',
+            transition: 'transform 0.1s, box-shadow 0.1s',
+            WebkitTapHighlightColor: 'transparent',
           }}
-          onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.96)' }}
+          onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.98)' }}
           onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
+          onTouchStart={(e) => { e.currentTarget.style.transform = 'scale(0.98)' }}
+          onTouchEnd={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
         >
           다른 종목도 검색해볼래?
         </button>
-
-        <p style={{ fontSize: '10px', color: '#8B95A1', textAlign: 'center', lineHeight: '16px', opacity: 0.6 }}>
-          과거 변동성 기준 추정치 · 투자 판단의 책임은 본인에게 있습니다
-        </p>
       </div>
 
 
@@ -640,10 +664,32 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
               animation: 'sheetUp 0.3s cubic-bezier(0.2, 0, 0, 1)',
             }}
           >
-            <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: 'rgba(0,0,0,0.12)', margin: '0 auto 16px' }} />
-            <p style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text-primary)', letterSpacing: '-0.3px', marginBottom: '16px' }}>
-              판결 이유
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <p style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text-primary)', letterSpacing: '-0.3px' }}>
+                이 종목에 대해 궁금해?
+              </p>
+              <button
+                onClick={() => setShowReasons(false)}
+                aria-label="닫기"
+                style={{
+                  width: '30px',
+                  height: '30px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(0,0,0,0.06)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  padding: 0,
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M1 1l10 10M11 1L1 11" stroke="var(--color-text-secondary)" strokeWidth="1.6" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
             {reasonCards.map((card, i) => (
               <div
                 key={i}

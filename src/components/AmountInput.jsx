@@ -67,13 +67,13 @@ export default function AmountInput({ stockName, stockCode, stockPrice, onSubmit
             {stockName}
           </p>
           <h1 style={{
-            fontSize: '30px',
-            fontWeight: 700,
+            fontSize: '28px',
+            fontWeight: 600,
             color: 'var(--color-text-primary)',
             letterSpacing: '-0.5px',
-            lineHeight: '38px',
+            lineHeight: '36px',
           }}>
-            몇 주 살 예정이야?
+            몇 주 매수 예정이야?
           </h1>
         </div>
 
@@ -94,10 +94,10 @@ export default function AmountInput({ stockName, stockCode, stockPrice, onSubmit
           </p>
           {stockPrice ? (
             <p style={{
-              fontSize: '26px',
+              fontSize: '22px',
               fontWeight: 600,
               color: 'var(--color-text-primary)',
-              letterSpacing: '-1.2px',
+              letterSpacing: '-0.8px',
               fontVariantNumeric: 'tabular-nums',
               lineHeight: 1.2,
             }}>
@@ -147,18 +147,14 @@ export default function AmountInput({ stockName, stockCode, stockPrice, onSubmit
                   inset: 0,
                   opacity: 0,
                   cursor: 'text',
-                  fontSize: '26px',
+                  fontSize: '22px',
                 }}
               />
-              {/* 수량 표시 — Toss/카카오뱅크 패턴
-                  비포커스+빈값 → 플레이스홀더
-                  포커스+빈값   → 커서만 (플레이스홀더 사라짐)
-                  포커스+숫자   → 숫자 | 주 (커서가 숫자와 단위 사이)
-                  비포커스+숫자 → 숫자주 (커서 없음) */}
+              {/* 수량 표시 — Toss/카카오뱅크 패턴 */}
               <p style={{
-                fontSize: '26px',
+                fontSize: '22px',
                 fontWeight: 600,
-                letterSpacing: '-0.8px',
+                letterSpacing: '-0.6px',
                 fontVariantNumeric: 'tabular-nums',
                 lineHeight: 1.3,
                 display: 'flex',
@@ -178,7 +174,7 @@ export default function AmountInput({ stockName, stockCode, stockPrice, onSubmit
                   <span style={{
                     display: 'inline-block',
                     width: '2px',
-                    height: '28px',
+                    height: '24px',
                     backgroundColor: 'var(--color-text-primary)',
                     borderRadius: '1px',
                     animation: 'inputCursorBlink 1s step-end infinite',
@@ -197,11 +193,11 @@ export default function AmountInput({ stockName, stockCode, stockPrice, onSubmit
 
           {parsedShares > 0 && stockPrice && (
             <p style={{
-              fontSize: '18px',
+              fontSize: '15px',
               fontWeight: 600,
-              color: 'var(--color-text-primary)',
+              color: 'var(--color-text-secondary)',
               fontVariantNumeric: 'tabular-nums',
-              letterSpacing: '-0.6px',
+              letterSpacing: '-0.4px',
               lineHeight: 1.3,
               marginTop: '2px',
             }}>
@@ -251,8 +247,8 @@ export default function AmountInput({ stockName, stockCode, stockPrice, onSubmit
 
       {/* 하단 고정 CTA */}
       <div style={{
-        padding: '8px 20px',
-        paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+        padding: '12px 20px',
+        paddingBottom: 'calc(28px + env(safe-area-inset-bottom, 0px))',
         backgroundColor: '#ffffff',
         position: 'sticky',
         bottom: 0,
@@ -285,7 +281,7 @@ export default function AmountInput({ stockName, stockCode, stockPrice, onSubmit
           onTouchStart={(e) => { if (canSubmit) e.currentTarget.style.transform = 'scale(0.98)' }}
           onTouchEnd={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
         >
-          지금 살까? 말까?
+          물릴 각인지 확인하기
         </button>
       </div>
     </div>

@@ -71,9 +71,11 @@ export default function SearchScreen({ onSearch, isSearching = false }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    const trimmed = value.trim()
-    if (!trimmed || isSearching) return
-    onSearch(trimmed)
+    if (isSearching) return
+    // 자동완성 후보가 있으면 첫 번째 후보로 검색, 없으면 차단
+    if (suggestions.length > 0) {
+      handleSelect(suggestions[0])
+    }
   }
 
   // 자동완성 항목 선택 → 코드로 검색 + 종목명 함께 전달
@@ -151,7 +153,7 @@ export default function SearchScreen({ onSearch, isSearching = false }) {
 
         <p style={{
           fontSize: '14px',
-          fontWeight: 500,
+          fontWeight: 600,
           color: 'var(--color-text-tertiary)',
           lineHeight: '21px',
         }}>
@@ -259,6 +261,8 @@ export default function SearchScreen({ onSearch, isSearching = false }) {
             borderRadius: '14px',
             boxShadow: '0 4px 24px rgba(0,0,0,0.10), 0 1px 6px rgba(0,0,0,0.06)',
             overflow: 'hidden',
+            maxHeight: `${5 * 44}px`,
+            overflowY: 'auto',
             zIndex: 10,
           }}>
             {suggestions.map((stock, i) => (
@@ -269,9 +273,9 @@ export default function SearchScreen({ onSearch, isSearching = false }) {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '10px',
+                  gap: '8px',
                   width: '100%',
-                  padding: '12px 14px',
+                  padding: '8px 12px',
                   backgroundColor: 'transparent',
                   border: 'none',
                   borderBottom: i < suggestions.length - 1
@@ -283,11 +287,10 @@ export default function SearchScreen({ onSearch, isSearching = false }) {
                 onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-bg-input)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
               >
-                <StockLogo stockCode={stock.code} stockName={stock.name} size={32} />
-                <span style={{ flex: 1, minWidth: 0 }}>
+                <StockLogo stockCode={stock.code} stockName={stock.name} size={26} />
+                <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '5px' }}>
                   <span style={{
-                    display: 'block',
-                    fontSize: '14px',
+                    fontSize: '13px',
                     fontWeight: 600,
                     color: 'var(--color-text-primary)',
                     letterSpacing: '-0.2px',
@@ -295,7 +298,7 @@ export default function SearchScreen({ onSearch, isSearching = false }) {
                     {stock.name}
                   </span>
                   <span style={{
-                    fontSize: '12px',
+                    fontSize: '11px',
                     color: 'var(--color-text-tertiary)',
                     fontWeight: 500,
                   }}>
@@ -303,7 +306,7 @@ export default function SearchScreen({ onSearch, isSearching = false }) {
                   </span>
                 </span>
                 <span style={{
-                  fontSize: '11px',
+                  fontSize: '10px',
                   fontWeight: 600,
                   color: stock.market === 'KOSPI'
                     ? 'var(--color-accent)'

@@ -124,6 +124,13 @@ export default function MainPage() {
     }
   }
 
+  // 에러 토스트 4초 후 자동 클리어
+  useEffect(() => {
+    if (!error) return
+    const id = setTimeout(() => setError(null), 4000)
+    return () => clearTimeout(id)
+  }, [error])
+
   // AMOUNT 페이지에 있는 동안 15초마다 현재가 갱신 — 장중 가격 반영
   useEffect(() => {
     if (step !== STEPS.AMOUNT || !query) return
@@ -178,19 +185,7 @@ export default function MainPage() {
         style={{ maxWidth: '480px', backgroundColor: pageBg }}
       >
         <main className={`flex-1 flex flex-col${isAmountStep || isLoadingStep || isVerdictStep ? '' : ' px-5 py-4'}`}>
-          {error && step === STEPS.SEARCH && (
-            <div style={{
-              backgroundColor: 'var(--color-negative-light)',
-              borderRadius: 'var(--radius-lg)',
-              padding: '12px 16px',
-              marginBottom: '16px',
-              border: '1px solid rgba(240,68,82,0.2)',
-            }}>
-              <p style={{ fontSize: '14px', color: 'var(--color-negative)', lineHeight: '21px' }}>
-                {error}
-              </p>
-            </div>
-          )}
+          {/* 에러 토스트는 하단 고정으로 이동 */}
 
           {step === STEPS.SEARCH  && <SearchScreen onSearch={handleSearch} isSearching={isSearching} />}
           {step === STEPS.AMOUNT  && (
@@ -220,6 +215,35 @@ export default function MainPage() {
 
       {showUSStockSheet && (
         <USStockSheet onClose={() => setShowUSStockSheet(false)} />
+      )}
+
+      {/* 하단 에러 토스트 */}
+      {error && step === STEPS.SEARCH && (
+        <div style={{
+          position: 'fixed',
+          bottom: '32px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          maxWidth: '440px',
+          width: 'calc(100% - 40px)',
+          backgroundColor: 'rgba(30,30,30,0.92)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          borderRadius: '14px',
+          padding: '14px 18px',
+          zIndex: 100,
+          animation: 'toastIn 0.3s cubic-bezier(0.2,0,0,1)',
+        }}>
+          <p style={{ fontSize: '14px', fontWeight: 500, color: '#fff', lineHeight: '20px', margin: 0 }}>
+            {error}
+          </p>
+          <style>{`
+            @keyframes toastIn {
+              from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+              to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+            }
+          `}</style>
+        </div>
       )}
     </div>
   )

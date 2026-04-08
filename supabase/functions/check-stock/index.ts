@@ -1434,8 +1434,8 @@ ${newsSection}
   "lossConversion": "손실 치환 문장. 위 지시대로.",
   "issueType": "임상실패 | 수주 | 실적 | 거시경제 | 루머 | 기타",
   "sectorImpact": "긍정 | 부정 | 중립",
-  "impactTag": "섹터+방향 (예: '바이오 부정') 또는 null",
-  "priceSignalTag": "가격 신호 (예: '10일 연속 하락') 또는 null",
+  "impactTag": "섹터+방향 6자 이내 (예: '바이오 부정') 또는 null",
+  "priceSignalTag": "가격 신호 8자 이내 (예: '10일 연속 하락', '고점 근처') 또는 null",
   "reasons": [
     {"cardType": "price | value | volume | market | news", "description": "중학생도 이해하는 2문장 이내. 전문용어 절대 금지."}
   ]

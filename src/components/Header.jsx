@@ -11,7 +11,15 @@ export default function Header({ onBack = null, title = '', onLogin = null, tran
   const { user, signOut, deleteUser } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const menuRef = useRef(null)
+
+  // 스크롤 감지 — 10px 이상 스크롤 시 블러 배경 적용
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 10)
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   // 외부 클릭 시 메뉴 닫힘
   useEffect(() => {
@@ -46,8 +54,13 @@ export default function Header({ onBack = null, title = '', onLogin = null, tran
       top: 0,
       zIndex: 50,
       width: '100%',
-      backgroundColor: transparent ? 'transparent' : '#ffffff',
-      borderBottom: 'none',
+      backgroundColor: scrolled
+        ? (transparent ? 'rgba(243,244,246,0.72)' : 'rgba(255,255,255,0.72)')
+        : (transparent ? 'transparent' : '#ffffff'),
+      backdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
+      WebkitBackdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
+      borderBottom: scrolled ? '0.5px solid rgba(0,0,0,0.06)' : 'none',
+      transition: 'background-color 0.2s, backdrop-filter 0.2s',
     }}>
       <div style={{
         display: 'flex',
@@ -63,8 +76,8 @@ export default function Header({ onBack = null, title = '', onLogin = null, tran
           disabled={!onBack}
           aria-label="뒤로가기"
           style={{
-            width: '40px',
-            height: '40px',
+            width: '34px',
+            height: '34px',
             borderRadius: '50%',
             background: onBack ? 'var(--btn-glass-circle-bg)' : 'transparent',
             backdropFilter: onBack ? 'blur(20px) saturate(180%)' : 'none',
@@ -76,7 +89,7 @@ export default function Header({ onBack = null, title = '', onLogin = null, tran
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: 0,
+            padding: '0 1px 0 0',
             boxShadow: onBack ? 'var(--btn-glass-circle-shadow)' : 'none',
             transition: 'transform 0.1s cubic-bezier(0.2, 0, 0, 1)',
           }}
@@ -84,8 +97,8 @@ export default function Header({ onBack = null, title = '', onLogin = null, tran
           onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
         >
-          <svg width="9" height="16" viewBox="0 0 9 16" fill="none">
-            <path d="M8 1L1 8L8 15" stroke="var(--color-text-primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg width="7" height="13" viewBox="0 0 7 13" fill="none">
+            <path d="M6 1L1 6.5L6 12" stroke="var(--color-text-primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
 
@@ -141,8 +154,8 @@ export default function Header({ onBack = null, title = '', onLogin = null, tran
               onClick={() => { setMenuOpen(v => !v); setConfirmDelete(false) }}
               aria-label="메뉴"
               style={{
-                width: '40px',
-                height: '40px',
+                width: '34px',
+                height: '34px',
                 borderRadius: '50%',
                 background: menuOpen ? 'rgba(240,242,245,0.90)' : 'var(--btn-glass-circle-bg)',
                 backdropFilter: 'blur(20px) saturate(180%)',
@@ -161,10 +174,10 @@ export default function Header({ onBack = null, title = '', onLogin = null, tran
               onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
             >
-              <svg width="16" height="4" viewBox="0 0 16 4" fill="currentColor">
-                <circle cx="2" cy="2" r="1.8"/>
-                <circle cx="8" cy="2" r="1.8"/>
-                <circle cx="14" cy="2" r="1.8"/>
+              <svg width="13" height="3" viewBox="0 0 13 3" fill="currentColor">
+                <circle cx="1.5" cy="1.5" r="1.5"/>
+                <circle cx="6.5" cy="1.5" r="1.5"/>
+                <circle cx="11.5" cy="1.5" r="1.5"/>
               </svg>
             </button>
 
