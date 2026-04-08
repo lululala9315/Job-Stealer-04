@@ -13,8 +13,8 @@ npm run preview  # 빌드 결과 미리보기
 
 Edge Function 배포:
 ```bash
-npx supabase functions deploy check-stock --no-verify-jwt --project-ref nceekggewxufjqythenq
-npx supabase functions deploy issue-feed --no-verify-jwt --project-ref nceekggewxufjqythenq
+npx supabase functions deploy check-stock --no-verify-jwt --project-ref $SUPABASE_PROJECT_REF
+npx supabase functions deploy issue-feed --no-verify-jwt --project-ref $SUPABASE_PROJECT_REF
 ```
 
 ## 아키텍처

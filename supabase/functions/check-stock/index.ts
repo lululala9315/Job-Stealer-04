@@ -7,9 +7,20 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+/** 허용 Origin 목록 — 배포 도메인 + 로컬 개발 */
+const ALLOWED_ORIGINS = [
+  'https://stockcheck-pi.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:5174',
+]
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('origin') || ''
+  const allowed = ALLOWED_ORIGINS.some(o => origin === o || origin.endsWith('.vercel.app'))
+  return {
+    'Access-Control-Allow-Origin': allowed ? origin : ALLOWED_ORIGINS[0],
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  }
 }
 
 /** 타임아웃 있는 fetch — 외부 API 무한 대기 방지 */
@@ -141,6 +152,8 @@ interface VerdictResult {
 // ─── 메인 핸들러 ─────────────────────────────────────────────
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req)
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -317,7 +330,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('check-stock 오류:', msg)
-    return jsonError(`판결 중 오류가 생겼어. 잠깐 뒤에 다시 시도해봐. (${msg})`, 500)
+    return jsonError('판결 중 오류가 생겼어. 잠깐 뒤에 다시 시도해봐.', 500)
   }
 })
 
@@ -378,7 +391,10 @@ async function getKisToken(): Promise<string> {
     }),
   }, 8000)
   const data = await res.json()
-  if (!data.access_token) throw new Error(`KIS 토큰 발급 실패: ${JSON.stringify(data)}`)
+  if (!data.access_token) {
+    console.error('KIS 토큰 발급 실패:', JSON.stringify(data))
+    throw new Error('KIS 토큰 발급 실패')
+  }
 
   const expiresAt = new Date(Date.now() + 23 * 60 * 60 * 1000)
 

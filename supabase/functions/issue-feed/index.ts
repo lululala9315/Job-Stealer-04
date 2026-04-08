@@ -6,9 +6,20 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+/** 허용 Origin 목록 — 배포 도메인 + 로컬 개발 */
+const ALLOWED_ORIGINS = [
+  'https://stockcheck-pi.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:5174',
+]
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('origin') || ''
+  const allowed = ALLOWED_ORIGINS.some(o => origin === o || origin.endsWith('.vercel.app'))
+  return {
+    'Access-Control-Allow-Origin': allowed ? origin : ALLOWED_ORIGINS[0],
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  }
 }
 
 async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 6000): Promise<Response> {
@@ -153,6 +164,8 @@ one_line 작성 규칙 (매우 중요):
 // ─── 메인 핸들러 ─────────────────────────────────────────────
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req)
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }

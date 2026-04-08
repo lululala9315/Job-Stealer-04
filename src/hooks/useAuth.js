@@ -21,7 +21,7 @@ export function useAuth() {
     // 인증 상태 변경 감지
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('[Auth]', event, session?.user?.email ?? session?.user?.id ?? null)
+        // 인증 이벤트 로그 (민감 정보 제외)
         setUser(session?.user ?? null)
         setLoading(false)
       }
