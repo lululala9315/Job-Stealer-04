@@ -4,7 +4,7 @@
  * 의존성: useAuth, SearchScreen, AmountInput, LoadingScreen, VerdictScreen, SimulationScreen, supabase
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Header from '../components/Header'
 import SearchScreen from '../components/SearchScreen'
 import AmountInput from '../components/AmountInput'
@@ -160,12 +160,12 @@ export default function MainPage() {
     return () => clearInterval(id)
   }, [step, query])
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setStep(STEPS.SEARCH)
     setResult(null)
     setQuery('')
     setError(null)
-  }
+  }, [])
 
   const handleBack = step === STEPS.SEARCH ? null : () => {
     if (step === STEPS.AMOUNT)       setStep(STEPS.SEARCH)

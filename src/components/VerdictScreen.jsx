@@ -4,7 +4,7 @@
  * 의존성: 없음
  */
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, memo } from 'react'
 // 스티커 스트로크 + 그림자 (로딩/메인과 동일)
 // 스티커 스트로크 + 딱 붙은 그림자
 // 스티커 스트로크 + 딱 붙은 그림자
@@ -278,7 +278,7 @@ function formatApprox(amount) {
   return man >= 1 ? `약 ${man.toLocaleString()}만원` : `약 ${amount.toLocaleString()}원`
 }
 
-export default function VerdictScreen({ result, stockName: stockNameProp, shares, investAmount, onReset }) {
+export default memo(function VerdictScreen({ result, stockName: stockNameProp, shares, investAmount, onReset }) {
   const [showReasons, setShowReasons] = useState(false)
 
   const verdict = result?.verdict || {}
@@ -803,4 +803,4 @@ export default function VerdictScreen({ result, stockName: stockNameProp, shares
       `}</style>
     </div>
   )
-}
+})
