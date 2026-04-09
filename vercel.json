@@ -15,7 +15,7 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
         { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://static.toss.im; img-src 'self' data: blob: https://*.naver.com https://*.navercorp.com https://cdn.jsdelivr.net https://*.alphasquare.co.kr https://api.alphasquare.co.kr; font-src 'self' https://static.toss.im; connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://api.alphasquare.co.kr; frame-src https://*.supabase.co; object-src 'none'; base-uri 'self'" }
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://static.toss.im; img-src 'self' data: blob: https://*.naver.com https://*.navercorp.com https://cdn.jsdelivr.net https://*.alphasquare.co.kr https://api.alphasquare.co.kr https://thumb.tossinvest.com https://static.toss.im; font-src 'self' https://static.toss.im; connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://api.alphasquare.co.kr; frame-src https://*.supabase.co; object-src 'none'; base-uri 'self'" }
       ]
     }
   ]

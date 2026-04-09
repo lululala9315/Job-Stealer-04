@@ -1,6 +1,6 @@
 /**
  * 역할: 종목 로고 이미지
- * 주요 기능: alphasquare 직접 URL 시도 → 실패 시 API로 hash URL 조회 → 이니셜 fallback
+ * 주요 기능: alphasquare → 토스 CDN → alphasquare API → 이니셜 fallback
  * 의존성: 없음
  */
 
@@ -51,28 +51,38 @@ export default function StockLogo({ stockCode, stockName, size = 36 }) {
     setFailed(false)
   }, [stockCode])
 
-  // 직접 URL 실패 → API에서 hash URL 조회
+  // 로고 로드 실패 → alphasquare → 토스 CDN → alphasquare API → fallback
   const handleError = async () => {
     if (!isKoreanCode) { setFailed(true); return }
 
-    // 이미 API 조회한 URL이면 (hash URL도 실패) → fallback
-    const isDirectUrl = imgUrl?.includes('/kr/')
-    if (!isDirectUrl) { setFailed(true); return }
+    const isAlphasquareDirect = imgUrl?.includes('file.alphasquare.co.kr/media/images/stock_logo/kr/')
+    const isTossUrl = imgUrl?.includes('tossinvest.com')
 
-    try {
-      const res = await fetch(
-        `https://api.alphasquare.co.kr/data/v2/stock/details?code=${stockCode}`
-      )
-      const data = await res.json()
-      const logoUrl = data?.[stockCode]?.logo || data?.logo
-      if (logoUrl) {
-        setImgUrl(logoUrl)
-      } else {
-        setFailed(true)
-      }
-    } catch {
-      setFailed(true)
+    // 1단계: alphasquare 직접 URL 실패 → 토스 CDN 시도
+    if (isAlphasquareDirect) {
+      setImgUrl(`https://thumb.tossinvest.com/image/resized/96x0/https%3A%2F%2Fstatic.toss.im%2Fpng-icons%2Fsecurities%2Ficn-sec-fill-${stockCode}.png`)
+      return
     }
+
+    // 2단계: 토스 CDN 실패 → alphasquare API로 hash URL 조회
+    if (isTossUrl) {
+      try {
+        const res = await fetch(
+          `https://api.alphasquare.co.kr/data/v2/stock/details?code=${stockCode}`
+        )
+        const data = await res.json()
+        const logoUrl = data?.[stockCode]?.logo || data?.logo
+        if (logoUrl) {
+          setImgUrl(logoUrl)
+          return
+        }
+      } catch {
+        // API 조회 실패 — fallback
+      }
+    }
+
+    // 3단계: 전부 실패 → 이니셜 fallback
+    setFailed(true)
   }
 
   if (!imgUrl || failed) {
